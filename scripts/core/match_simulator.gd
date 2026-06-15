@@ -39,10 +39,4 @@ static func _roll_goals(expected_goals: float, rng: RandomNumberGenerator) -> in
 	return clampi(goals, 0, 8)
 
 static func _build_summary(home: Team, away: Team, home_goals: int, away_goals: int) -> String:
-	var result_text: String = "战平"
-	if home_goals > away_goals:
-		result_text = "主队取胜"
-	elif away_goals > home_goals:
-		result_text = "客队取胜"
-
-	return "%s %d-%d %s  %s" % [home.team_name, home_goals, away_goals, away.team_name, result_text]
+	return "%s %d-%d %s" % [home.team_name, home_goals, away_goals, away.team_name]

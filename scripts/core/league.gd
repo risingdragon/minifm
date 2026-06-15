@@ -107,6 +107,7 @@ func _generate_round_robin_schedule() -> void:
 	var rotation: Array[Team] = teams.duplicate()
 	var team_count: int = rotation.size()
 	var round_count: int = team_count - 1
+	var first_half_schedule: Array = []
 
 	for round_index in range(round_count):
 		var fixtures: Array = []
@@ -121,7 +122,19 @@ func _generate_round_robin_schedule() -> void:
 
 			fixtures.append({"home": home, "away": away})
 
-		schedule.append(fixtures)
+		first_half_schedule.append(fixtures)
 
 		var moved: Team = rotation.pop_back()
 		rotation.insert(1, moved)
+
+	for fixtures in first_half_schedule:
+		schedule.append(fixtures)
+
+	for fixtures in first_half_schedule:
+		var reverse_fixtures: Array = []
+		for fixture in fixtures:
+			reverse_fixtures.append({
+				"home": fixture["away"],
+				"away": fixture["home"]
+			})
+		schedule.append(reverse_fixtures)

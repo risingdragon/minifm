@@ -36,7 +36,7 @@ theme_override_font_sizes/font_size = 28
 
 [node name="RoundLabel" type="Label" parent="Root/Header"]
 layout_mode = 2
-text = "1/9轮"
+text = "1/18轮"
 vertical_alignment = 1
 
 [node name="NextRoundButton" type="Button" parent="Root/Header"]
