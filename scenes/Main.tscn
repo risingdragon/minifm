@@ -28,21 +28,114 @@ theme_override_constants/separation = 12
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="Title" type="Label" parent="Root/Header"]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "miniFM"
-theme_override_font_sizes/font_size = 28
-
-[node name="RoundLabel" type="Label" parent="Root/Header"]
-layout_mode = 2
-text = "1/18轮"
-vertical_alignment = 1
-
 [node name="NextRoundButton" type="Button" parent="Root/Header"]
 layout_mode = 2
 custom_minimum_size = Vector2(120, 40)
 text = "下一轮"
+
+[node name="Title" type="Label" parent="Root/Header"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+text = "miniFM"
+theme_override_font_sizes/font_size = 28
+
+[node name="StandingsViewButton" type="Button" parent="Root/Header"]
+layout_mode = 2
+custom_minimum_size = Vector2(86, 36)
+text = "积分榜"
+
+[node name="LineupViewButton" type="Button" parent="Root/Header"]
+layout_mode = 2
+custom_minimum_size = Vector2(86, 36)
+text = "阵容"
+
+[node name="RoundLabel" type="Label" parent="Root/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "1/18轮"
+vertical_alignment = 1
+
+[node name="LineupPanel" type="VBoxContainer" parent="Root"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="LineupHeader" type="HBoxContainer" parent="Root/LineupPanel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="LineupTitle" type="Label" parent="Root/LineupPanel/LineupHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "阵容"
+theme_override_font_sizes/font_size = 20
+
+[node name="LineupStatus" type="Label" parent="Root/LineupPanel/LineupHeader"]
+layout_mode = 2
+text = "首发 11 人，GK 1 人"
+vertical_alignment = 1
+
+[node name="LineupError" type="Label" parent="Root/LineupPanel"]
+layout_mode = 2
+text = ""
+theme_override_colors/font_color = Color(0.9, 0.15, 0.12, 1)
+
+[node name="LineupColumns" type="HBoxContainer" parent="Root/LineupPanel"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="GKColumn" type="VBoxContainer" parent="Root/LineupPanel/LineupColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="Root/LineupPanel/LineupColumns/GKColumn"]
+layout_mode = 2
+text = "GK"
+
+[node name="Players" type="VBoxContainer" parent="Root/LineupPanel/LineupColumns/GKColumn"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="DFColumn" type="VBoxContainer" parent="Root/LineupPanel/LineupColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="Root/LineupPanel/LineupColumns/DFColumn"]
+layout_mode = 2
+text = "DF"
+
+[node name="Players" type="VBoxContainer" parent="Root/LineupPanel/LineupColumns/DFColumn"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="MFColumn" type="VBoxContainer" parent="Root/LineupPanel/LineupColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="Root/LineupPanel/LineupColumns/MFColumn"]
+layout_mode = 2
+text = "MF"
+
+[node name="Players" type="VBoxContainer" parent="Root/LineupPanel/LineupColumns/MFColumn"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="FWColumn" type="VBoxContainer" parent="Root/LineupPanel/LineupColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="Root/LineupPanel/LineupColumns/FWColumn"]
+layout_mode = 2
+text = "FW"
+
+[node name="Players" type="VBoxContainer" parent="Root/LineupPanel/LineupColumns/FWColumn"]
+layout_mode = 2
+theme_override_constants/separation = 2
 
 [node name="MainColumns" type="HSplitContainer" parent="Root"]
 layout_mode = 2

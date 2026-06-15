@@ -4,6 +4,17 @@ const LeagueScript = preload("res://scripts/core/league.gd")
 
 @onready var round_label: Label = $Root/Header/RoundLabel
 @onready var next_round_button: Button = $Root/Header/NextRoundButton
+@onready var standings_view_button: Button = $Root/Header/StandingsViewButton
+@onready var lineup_view_button: Button = $Root/Header/LineupViewButton
+@onready var lineup_panel: VBoxContainer = $Root/LineupPanel
+@onready var lineup_title: Label = $Root/LineupPanel/LineupHeader/LineupTitle
+@onready var lineup_status: Label = $Root/LineupPanel/LineupHeader/LineupStatus
+@onready var lineup_error: Label = $Root/LineupPanel/LineupError
+@onready var gk_players_list: VBoxContainer = $Root/LineupPanel/LineupColumns/GKColumn/Players
+@onready var df_players_list: VBoxContainer = $Root/LineupPanel/LineupColumns/DFColumn/Players
+@onready var mf_players_list: VBoxContainer = $Root/LineupPanel/LineupColumns/MFColumn/Players
+@onready var fw_players_list: VBoxContainer = $Root/LineupPanel/LineupColumns/FWColumn/Players
+@onready var standings_view: HSplitContainer = $Root/MainColumns
 @onready var standings_header: GridContainer = $Root/MainColumns/LeftPanel/StandingsHeader
 @onready var standings_list: VBoxContainer = $Root/MainColumns/LeftPanel/StandingsList
 @onready var results_title: Label = $Root/MainColumns/RightPanel/ResultsTitle
@@ -16,23 +27,36 @@ func _ready() -> void:
 	league.setup_default_league()
 
 	next_round_button.pressed.connect(_on_next_round_pressed)
+	standings_view_button.pressed.connect(_show_standings_view)
+	lineup_view_button.pressed.connect(_show_lineup_view)
 
+	_build_lineup_view()
 	_build_standings_header()
-	_render_results(["点击“下一轮”开始第一轮比赛。"])
+	var intro_lines: Array[String] = ["点击“下一轮”开始第一轮比赛。"]
+	_render_results(intro_lines)
+	_show_standings_view()
 	_refresh()
 
 func _on_next_round_pressed() -> void:
 	if not league.has_next_round():
 		return
 
+	var lineup_validation: Dictionary = league.validate_player_lineup()
+	if not bool(lineup_validation["ok"]):
+		lineup_error.text = str(lineup_validation["message"])
+		_show_lineup_view()
+		return
+
+	lineup_error.text = ""
 	var played_round: int = league.current_round + 1
 	var results: Array[Dictionary] = league.play_next_round()
-	var lines: Array = []
+	var lines: Array[String] = []
 	for result in results:
-		lines.append(result["summary"])
+		lines.append(str(result["summary"]))
 
 	results_title.text = "第 %d 轮赛果" % played_round
 	_render_results(lines)
+	_show_standings_view()
 	_refresh()
 
 func _refresh() -> void:
@@ -46,6 +70,68 @@ func _refresh() -> void:
 		next_round_button.text = "已结束"
 
 	_render_standings()
+	_refresh_lineup_status()
+
+func _show_standings_view() -> void:
+	standings_view.visible = true
+	lineup_panel.visible = false
+	standings_view_button.disabled = true
+	lineup_view_button.disabled = false
+
+func _show_lineup_view() -> void:
+	standings_view.visible = false
+	lineup_panel.visible = true
+	standings_view_button.disabled = false
+	lineup_view_button.disabled = true
+
+func _build_lineup_view() -> void:
+	lineup_title.text = "%s 阵容" % league.player_team.team_name
+	_clear_children(gk_players_list)
+	_clear_children(df_players_list)
+	_clear_children(mf_players_list)
+	_clear_children(fw_players_list)
+
+	for player in league.player_team.players:
+		var checkbox: CheckBox = CheckBox.new()
+		checkbox.text = _player_lineup_text(player)
+		checkbox.clip_text = true
+		checkbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		checkbox.button_pressed = league.player_team.is_player_starting(player)
+		checkbox.toggled.connect(_on_player_toggled.bind(player))
+		_position_list(player.position).add_child(checkbox)
+
+	_refresh_lineup_status()
+
+func _on_player_toggled(selected: bool, player: Player) -> void:
+	league.player_team.set_player_starting(player, selected)
+	_refresh_lineup_status()
+
+func _refresh_lineup_status() -> void:
+	var selected_count: int = league.player_team.starting_count()
+	var gk_count: int = league.player_team.starting_gk_count()
+	lineup_status.text = "首发 %d/11，GK %d/1" % [selected_count, gk_count]
+
+	var error: String = league.player_team.lineup_error()
+	if error.is_empty():
+		lineup_error.text = ""
+	elif not lineup_error.text.is_empty():
+		lineup_error.text = error
+
+func _player_lineup_text(player: Player) -> String:
+	return "%s  能力 %.0f" % [player.player_name, player.overall()]
+
+func _position_list(position: String) -> VBoxContainer:
+	match position:
+		"GK":
+			return gk_players_list
+		"DF":
+			return df_players_list
+		"MF":
+			return mf_players_list
+		"FW":
+			return fw_players_list
+		_:
+			return mf_players_list
 
 func _build_standings_header() -> void:
 	_clear_children(standings_header)
@@ -59,6 +145,18 @@ func _render_standings() -> void:
 
 	var rank: int = 1
 	for team in league.standings():
+		var row_container: PanelContainer = PanelContainer.new()
+		row_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		if team == league.player_team:
+			var highlight: StyleBoxFlat = StyleBoxFlat.new()
+			highlight.bg_color = Color(0.12, 0.32, 0.18, 0.9)
+			highlight.set_content_margin_all(4.0)
+			row_container.add_theme_stylebox_override("panel", highlight)
+		else:
+			var empty_style: StyleBoxEmpty = StyleBoxEmpty.new()
+			empty_style.set_content_margin_all(4.0)
+			row_container.add_theme_stylebox_override("panel", empty_style)
+
 		var row: GridContainer = GridContainer.new()
 		row.columns = 9
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -77,12 +175,16 @@ func _render_standings() -> void:
 		]
 
 		for index in range(values.size()):
-			row.add_child(_table_label(values[index], index == 1 or index == 8))
+			var label: Label = _table_label(values[index], index == 1 or index == 8)
+			if team == league.player_team:
+				label.add_theme_color_override("font_color", Color(0.95, 1.0, 0.92, 1.0))
+			row.add_child(label)
 
-		standings_list.add_child(row)
+		row_container.add_child(row)
+		standings_list.add_child(row_container)
 		rank += 1
 
-func _render_results(lines: Array) -> void:
+func _render_results(lines: Array[String]) -> void:
 	_clear_children(results_list)
 
 	for line in lines:
@@ -95,7 +197,7 @@ func _render_results(lines: Array) -> void:
 func _table_label(text: String, emphasized: bool = false) -> Label:
 	var label: Label = Label.new()
 	label.text = text
-	label.custom_minimum_size = Vector2(66, 28)
+	label.custom_minimum_size = Vector2(52, 28)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 

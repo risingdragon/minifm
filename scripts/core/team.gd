@@ -4,6 +4,7 @@ extends RefCounted
 var id: int
 var team_name: String
 var players: Array[Player] = []
+var starting_players: Array[Player] = []
 
 var played: int = 0
 var won: int = 0
@@ -19,6 +20,99 @@ func _init(_id: int, _team_name: String) -> void:
 
 func add_player(player: Player) -> void:
 	players.append(player)
+
+func set_player_starting(player: Player, selected: bool) -> void:
+	if selected:
+		if not starting_players.has(player):
+			starting_players.append(player)
+	elif starting_players.has(player):
+		starting_players.erase(player)
+
+func is_player_starting(player: Player) -> bool:
+	return starting_players.has(player)
+
+func starting_count() -> int:
+	return starting_players.size()
+
+func starting_gk_count() -> int:
+	var count: int = 0
+	for player in starting_players:
+		if player.position == "GK":
+			count += 1
+	return count
+
+func lineup_error() -> String:
+	if starting_count() != 11:
+		return "首发人数必须正好 11 人，当前为 %d 人。" % starting_count()
+
+	if starting_gk_count() != 1:
+		return "首发 GK 必须正好 1 人，当前为 %d 人。" % starting_gk_count()
+
+	return ""
+
+func is_lineup_valid() -> bool:
+	return lineup_error().is_empty()
+
+func auto_select_starting_lineup() -> void:
+	starting_players.clear()
+
+	var goalkeepers: Array[Player] = _players_by_position("GK")
+	goalkeepers.sort_custom(func(a: Player, b: Player) -> bool:
+		return a.overall() > b.overall()
+	)
+
+	if not goalkeepers.is_empty():
+		starting_players.append(goalkeepers[0])
+
+	var outfield_players: Array[Player] = []
+	for player in players:
+		if player.position != "GK":
+			outfield_players.append(player)
+
+	outfield_players.sort_custom(func(a: Player, b: Player) -> bool:
+		return a.overall() > b.overall()
+	)
+
+	for player in outfield_players:
+		if starting_players.size() >= 11:
+			break
+		starting_players.append(player)
+
+func lineup_strength() -> Dictionary:
+	return {
+		"attack_strength": lineup_attack_strength(),
+		"defense_strength": lineup_defense_strength()
+	}
+
+func lineup_attack_strength() -> float:
+	var attack_total: float = 0.0
+
+	for player in starting_players:
+		match player.position:
+			"DF":
+				attack_total += player.attack * 0.15 + player.midfield * 0.1
+			"MF":
+				attack_total += player.attack * 0.45 + player.midfield * 0.35
+			"FW":
+				attack_total += player.attack * 0.85 + player.midfield * 0.15
+
+	return attack_total / 10.0
+
+func lineup_defense_strength() -> float:
+	var defense_total: float = 0.0
+
+	for player in starting_players:
+		match player.position:
+			"GK":
+				defense_total += player.goalkeeping * 1.0 + player.defense * 0.2
+			"DF":
+				defense_total += player.defense * 0.85 + player.midfield * 0.15
+			"MF":
+				defense_total += player.defense * 0.35 + player.midfield * 0.35
+			"FW":
+				defense_total += player.defense * 0.1 + player.midfield * 0.1
+
+	return defense_total / 10.0
 
 func reset_record() -> void:
 	played = 0
@@ -72,10 +166,30 @@ func _average_position_rating(position: String, attribute: String) -> float:
 		if player.position != position:
 			continue
 
-		total += player.get(attribute)
+		total += _player_attribute(player, attribute)
 		count += 1
 
 	if count == 0:
 		return team_rating()
 
 	return total / count
+
+func _players_by_position(position: String) -> Array[Player]:
+	var result: Array[Player] = []
+	for player in players:
+		if player.position == position:
+			result.append(player)
+	return result
+
+func _player_attribute(player: Player, attribute: String) -> int:
+	match attribute:
+		"attack":
+			return player.attack
+		"midfield":
+			return player.midfield
+		"defense":
+			return player.defense
+		"goalkeeping":
+			return player.goalkeeping
+		_:
+			return 0

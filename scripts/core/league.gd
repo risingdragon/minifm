@@ -7,6 +7,7 @@ var schedule: Array = []
 var current_round: int = 0
 var last_results: Array[Dictionary] = []
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+var player_team: Team
 
 func _init(_league_name: String = "miniFM 联赛") -> void:
 	league_name = _league_name
@@ -17,6 +18,7 @@ func setup_default_league() -> void:
 	schedule.clear()
 	current_round = 0
 	last_results.clear()
+	player_team = null
 
 	var team_names: Array[String] = [
 		"北城联", "海港竞技", "山谷流星", "西岸骑士", "东都FC",
@@ -32,6 +34,9 @@ func setup_default_league() -> void:
 			team.add_player(_create_player(player_id, team_index, player_index))
 			player_id += 1
 
+		team.auto_select_starting_lineup()
+
+	player_team = teams[0]
 	_generate_round_robin_schedule()
 
 func has_next_round() -> bool:
@@ -43,9 +48,13 @@ func play_next_round() -> Array[Dictionary]:
 	if not has_next_round():
 		return last_results
 
+	_prepare_non_player_lineups()
+
 	var fixtures: Array = schedule[current_round]
 	for fixture in fixtures:
-		last_results.append(MatchSimulator.simulate(fixture["home"], fixture["away"], rng))
+		var home: Team = fixture["home"] as Team
+		var away: Team = fixture["away"] as Team
+		last_results.append(MatchSimulator.simulate(home, away, rng))
 
 	current_round += 1
 	return last_results
@@ -65,6 +74,16 @@ func standings() -> Array[Team]:
 
 func total_rounds() -> int:
 	return schedule.size()
+
+func validate_player_lineup() -> Dictionary:
+	if player_team == null:
+		return {"ok": false, "message": "没有可用的玩家球队。"}
+
+	var error: String = player_team.lineup_error()
+	if not error.is_empty():
+		return {"ok": false, "message": error}
+
+	return {"ok": true, "message": ""}
 
 func _create_player(player_id: int, team_index: int, player_index: int) -> Player:
 	var positions: Array[String] = ["GK", "GK", "DF", "DF", "DF", "DF", "DF", "MF", "MF", "MF", "MF", "MF", "FW", "FW", "FW", "FW", "MF", "DF"]
@@ -138,3 +157,9 @@ func _generate_round_robin_schedule() -> void:
 				"away": fixture["home"]
 			})
 		schedule.append(reverse_fixtures)
+
+func _prepare_non_player_lineups() -> void:
+	for team in teams:
+		if team == player_team:
+			continue
+		team.auto_select_starting_lineup()

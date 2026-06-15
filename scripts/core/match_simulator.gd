@@ -4,11 +4,13 @@ extends RefCounted
 const HOME_ADVANTAGE: float = 4.0
 
 static func simulate(home: Team, away: Team, rng: RandomNumberGenerator) -> Dictionary:
-	var home_strength: float = home.attack_rating() * 0.42 + home.midfield_rating() * 0.25 - away.defense_rating() * 0.28 + HOME_ADVANTAGE
-	var away_strength: float = away.attack_rating() * 0.42 + away.midfield_rating() * 0.25 - home.defense_rating() * 0.28
+	var home_attack: float = home.lineup_attack_strength() + HOME_ADVANTAGE
+	var home_defense: float = home.lineup_defense_strength()
+	var away_attack: float = away.lineup_attack_strength()
+	var away_defense: float = away.lineup_defense_strength()
 
-	var home_expected: float = clampf(1.25 + home_strength / 45.0, 0.15, 4.2)
-	var away_expected: float = clampf(1.05 + away_strength / 45.0, 0.15, 4.0)
+	var home_expected: float = clampf(1.25 + (home_attack - away_defense) / 32.0, 0.15, 4.4)
+	var away_expected: float = clampf(1.05 + (away_attack - home_defense) / 32.0, 0.15, 4.2)
 
 	var home_goals: int = _roll_goals(home_expected, rng)
 	var away_goals: int = _roll_goals(away_expected, rng)
