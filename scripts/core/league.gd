@@ -7,12 +7,17 @@ var schedule: Array = []
 var current_round: int = 0
 var last_results: Array[Dictionary] = []
 var last_growth_logs: Array[Dictionary] = []
+var last_season_summary_logs: Array[String] = []
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var player_team: Team
 var growth_system: PlayerGrowthSystem = PlayerGrowthSystem.new()
 var transfer_system: TransferSystem = TransferSystem.new()
+var youth_system: YouthSystem = YouthSystem.new()
 var transfer_logs: Array[String] = []
 var lineup_warning: String = ""
+var season_year: int = 2026
+var season_complete: bool = false
+var next_player_id: int = 1
 
 func _init(_league_name: String = "miniFM 联赛") -> void:
 	league_name = _league_name
@@ -24,8 +29,12 @@ func setup_default_league() -> void:
 	current_round = 0
 	last_results.clear()
 	last_growth_logs.clear()
+	last_season_summary_logs.clear()
 	transfer_logs.clear()
 	lineup_warning = ""
+	season_year = 2026
+	season_complete = false
+	next_player_id = 1
 	player_team = null
 
 	var team_names: Array[String] = [
@@ -33,17 +42,16 @@ func setup_default_league() -> void:
 		"南湖蓝鲸", "钢铁工人", "大学城", "红桥城", "绿茵游侠"
 	]
 
-	var player_id: int = 1
 	for team_index in range(team_names.size()):
 		var team: Team = Team.new(team_index + 1, team_names[team_index])
 		team.money = transfer_system.initial_money()
 		teams.append(team)
 
 		for player_index in range(18):
-			var player: Player = _create_player(player_id, team_index, player_index)
+			var player: Player = _create_player(next_player_id, team_index, player_index)
 			transfer_system.setup_player_finance(player, rng)
 			team.add_player(player)
-			player_id += 1
+			next_player_id += 1
 
 		team.auto_select_starting_lineup()
 
@@ -55,6 +63,7 @@ func has_next_round() -> bool:
 
 func play_next_round() -> Array[Dictionary]:
 	last_results.clear()
+	last_season_summary_logs.clear()
 
 	if not has_next_round():
 		return last_results
@@ -75,7 +84,26 @@ func play_next_round() -> Array[Dictionary]:
 	_sync_transfer_logs()
 	lineup_warning = transfer_system.lineup_warning
 	current_round += 1
+	if not has_next_round():
+		_finish_season()
 	return last_results
+
+func start_next_season() -> void:
+	season_year += 1
+	season_complete = false
+	current_round = 0
+	schedule.clear()
+	last_results.clear()
+	last_growth_logs.clear()
+	last_season_summary_logs.clear()
+	lineup_warning = ""
+
+	for team in teams:
+		team.reset_record()
+		if team != player_team:
+			team.auto_select_starting_lineup()
+
+	_generate_round_robin_schedule()
 
 func standings() -> Array[Team]:
 	var sorted_teams: Array[Team] = teams.duplicate()
@@ -92,6 +120,9 @@ func standings() -> Array[Team]:
 
 func total_rounds() -> int:
 	return schedule.size()
+
+func is_season_complete() -> bool:
+	return season_complete
 
 func validate_player_lineup() -> Dictionary:
 	if player_team == null:
@@ -134,6 +165,22 @@ func _sync_transfer_logs() -> void:
 	transfer_logs.clear()
 	for log_line in transfer_system.logs:
 		transfer_logs.append(log_line)
+
+func _finish_season() -> void:
+	season_complete = true
+	last_season_summary_logs = youth_system.process_season_end(
+		teams,
+		rng,
+		transfer_system,
+		season_year,
+		next_player_id,
+		player_team
+	)
+	next_player_id = youth_system.next_player_id
+	transfer_system.refresh_player_finance(teams)
+	for team in teams:
+		if team != player_team:
+			team.auto_select_starting_lineup()
 
 func _create_player(player_id: int, team_index: int, player_index: int) -> Player:
 	var positions: Array[String] = ["GK", "GK", "DF", "DF", "DF", "DF", "DF", "MF", "MF", "MF", "MF", "MF", "FW", "FW", "FW", "FW", "MF", "DF"]

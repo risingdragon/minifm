@@ -59,6 +59,11 @@ layout_mode = 2
 custom_minimum_size = Vector2(110, 36)
 text = "转会市场"
 
+[node name="SeasonSummaryViewButton" type="Button" parent="Root/Header"]
+layout_mode = 2
+custom_minimum_size = Vector2(110, 36)
+text = "赛季总结"
+
 [node name="RoundLabel" type="Label" parent="Root/Header"]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -196,6 +201,28 @@ layout_mode = 2
 custom_minimum_size = Vector2(920, 0)
 size_flags_horizontal = 3
 theme_override_constants/separation = 3
+
+[node name="SeasonSummaryPanel" type="VBoxContainer" parent="Root"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="SeasonSummaryTitle" type="Label" parent="Root/SeasonSummaryPanel"]
+layout_mode = 2
+text = "赛季总结"
+theme_override_font_sizes/font_size = 22
+
+[node name="SeasonSummaryScroll" type="ScrollContainer" parent="Root/SeasonSummaryPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="SeasonSummaryList" type="VBoxContainer" parent="Root/SeasonSummaryPanel/SeasonSummaryScroll"]
+layout_mode = 2
+custom_minimum_size = Vector2(760, 0)
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
 
 [node name="MainColumns" type="HSplitContainer" parent="Root"]
 layout_mode = 2

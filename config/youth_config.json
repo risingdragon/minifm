@@ -1,0 +1,31 @@
+{
+  "retirement_rules": [
+    {
+      "min_age": 36,
+      "max_age": 37,
+      "probability": 0.3
+    },
+    {
+      "min_age": 38,
+      "max_age": 39,
+      "probability": 0.6
+    },
+    {
+      "min_age": 40,
+      "max_age": 99,
+      "probability": 1.0
+    }
+  ],
+  "youth_players_per_team_per_season": 2,
+  "youth_age_min": 16,
+  "youth_age_max": 18,
+  "youth_ability_min": 30,
+  "youth_ability_max": 80,
+  "youth_potential_max": 200,
+  "youth_contract_years": 3,
+  "min_team_size_after_season": 18,
+  "positions": ["GK", "DF", "MF", "FW"],
+  "first_names": ["张", "王", "李", "赵", "陈", "刘"],
+  "last_names": ["伟", "强", "磊", "明", "超", "博", "宇", "杰"]
+}
+

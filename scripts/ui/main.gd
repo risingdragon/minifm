@@ -14,6 +14,7 @@ const MARKET_SORT_KEYS: Array[String] = ["name", "age", "position", "ability", "
 @onready var lineup_view_button: Button = $Root/Header/LineupViewButton
 @onready var post_match_view_button: Button = $Root/Header/PostMatchViewButton
 @onready var transfer_view_button: Button = $Root/Header/TransferViewButton
+@onready var season_summary_view_button: Button = $Root/Header/SeasonSummaryViewButton
 @onready var lineup_panel: VBoxContainer = $Root/LineupPanel
 @onready var lineup_title: Label = $Root/LineupPanel/LineupHeader/LineupTitle
 @onready var lineup_status: Label = $Root/LineupPanel/LineupHeader/LineupStatus
@@ -30,7 +31,11 @@ const MARKET_SORT_KEYS: Array[String] = ["name", "age", "position", "ability", "
 @onready var market_header: GridContainer = $Root/TransferMarketPanel/MarketHeader
 @onready var market_list: VBoxContainer = $Root/TransferMarketPanel/MarketScroll/MarketList
 @onready var transfer_log_list: VBoxContainer = $Root/TransferMarketPanel/TransferLogScroll/TransferLogList
+@onready var season_summary_panel: VBoxContainer = $Root/SeasonSummaryPanel
+@onready var season_summary_title: Label = $Root/SeasonSummaryPanel/SeasonSummaryTitle
+@onready var season_summary_list: VBoxContainer = $Root/SeasonSummaryPanel/SeasonSummaryScroll/SeasonSummaryList
 @onready var standings_view: HSplitContainer = $Root/MainColumns
+@onready var standings_title: Label = $Root/MainColumns/LeftPanel/StandingsTitle
 @onready var standings_header: GridContainer = $Root/MainColumns/LeftPanel/StandingsHeader
 @onready var standings_list: VBoxContainer = $Root/MainColumns/LeftPanel/StandingsList
 @onready var results_title: Label = $Root/MainColumns/RightPanel/ResultsTitle
@@ -51,6 +56,7 @@ func _ready() -> void:
 	lineup_view_button.pressed.connect(_show_lineup_view)
 	post_match_view_button.pressed.connect(_show_post_match_view)
 	transfer_view_button.pressed.connect(_show_transfer_view)
+	season_summary_view_button.pressed.connect(_show_season_summary_view)
 
 	_build_lineup_view()
 	_build_standings_header()
@@ -62,6 +68,18 @@ func _ready() -> void:
 func _on_next_round_pressed() -> void:
 	if post_match_panel.visible:
 		_show_standings_view()
+		return
+	if season_summary_panel.visible:
+		_show_standings_view()
+		return
+
+	if league.is_season_complete():
+		league.start_next_season()
+		_build_lineup_view()
+		_render_transfer_view()
+		_render_result_messages(["新赛季开始，点击“继续”进行第一轮比赛。"])
+		_show_standings_view()
+		_refresh()
 		return
 
 	if not league.has_next_round():
@@ -82,18 +100,23 @@ func _on_next_round_pressed() -> void:
 	_render_post_match_view(played_round, results)
 	_build_lineup_view()
 	_render_transfer_view()
-	_show_post_match_view()
+	if league.is_season_complete():
+		_render_season_summary()
+		_show_season_summary_view()
+	else:
+		_show_post_match_view()
 	_refresh()
 
 func _refresh() -> void:
+	standings_title.text = "%d赛季积分榜" % league.season_year
 	round_label.text = "%d/%d轮" % [min(league.current_round + 1, league.total_rounds()), league.total_rounds()]
 	if league.current_round == 0:
 		results_title.text = "第 1 轮赛果"
 
 	if not league.has_next_round():
 		round_label.text = "赛季结束"
-		next_round_button.disabled = true
-		next_round_button.text = "已结束"
+		next_round_button.disabled = false
+		next_round_button.text = "继续"
 	else:
 		next_round_button.disabled = false
 		next_round_button.text = "继续"
@@ -111,30 +134,36 @@ func _show_standings_view() -> void:
 	lineup_panel.visible = false
 	post_match_panel.visible = false
 	transfer_market_panel.visible = false
+	season_summary_panel.visible = false
 	standings_view_button.disabled = true
 	lineup_view_button.disabled = false
 	post_match_view_button.disabled = league.current_round == 0
 	transfer_view_button.disabled = false
+	season_summary_view_button.disabled = not league.is_season_complete()
 
 func _show_lineup_view() -> void:
 	standings_view.visible = false
 	lineup_panel.visible = true
 	post_match_panel.visible = false
 	transfer_market_panel.visible = false
+	season_summary_panel.visible = false
 	standings_view_button.disabled = false
 	lineup_view_button.disabled = true
 	post_match_view_button.disabled = league.current_round == 0
 	transfer_view_button.disabled = false
+	season_summary_view_button.disabled = not league.is_season_complete()
 
 func _show_post_match_view() -> void:
 	standings_view.visible = false
 	lineup_panel.visible = false
 	post_match_panel.visible = true
 	transfer_market_panel.visible = false
+	season_summary_panel.visible = false
 	standings_view_button.disabled = false
 	lineup_view_button.disabled = false
 	post_match_view_button.disabled = true
 	transfer_view_button.disabled = false
+	season_summary_view_button.disabled = not league.is_season_complete()
 
 func _show_transfer_view() -> void:
 	_render_transfer_view()
@@ -142,10 +171,25 @@ func _show_transfer_view() -> void:
 	lineup_panel.visible = false
 	post_match_panel.visible = false
 	transfer_market_panel.visible = true
+	season_summary_panel.visible = false
 	standings_view_button.disabled = false
 	lineup_view_button.disabled = false
 	post_match_view_button.disabled = league.current_round == 0
 	transfer_view_button.disabled = true
+	season_summary_view_button.disabled = not league.is_season_complete()
+
+func _show_season_summary_view() -> void:
+	_render_season_summary()
+	standings_view.visible = false
+	lineup_panel.visible = false
+	post_match_panel.visible = false
+	transfer_market_panel.visible = false
+	season_summary_panel.visible = true
+	standings_view_button.disabled = false
+	lineup_view_button.disabled = false
+	post_match_view_button.disabled = league.current_round == 0
+	transfer_view_button.disabled = false
+	season_summary_view_button.disabled = true
 
 func _render_post_match_view(played_round: int, results: Array[Dictionary]) -> void:
 	post_match_title.text = "第 %d 轮赛后" % played_round
@@ -160,6 +204,25 @@ func _render_post_match_view(played_round: int, results: Array[Dictionary]) -> v
 		var text: String = str(log_entry["text"])
 		var change: int = int(log_entry["change"])
 		_add_player_growth_line(text, change)
+
+func _render_season_summary() -> void:
+	_clear_children(season_summary_list)
+	season_summary_title.text = "%d赛季总结" % league.season_year
+
+	if league.last_season_summary_logs.is_empty():
+		var empty_label: Label = Label.new()
+		empty_label.text = "暂无赛季总结"
+		empty_label.custom_minimum_size = Vector2(700, 24)
+		season_summary_list.add_child(empty_label)
+		return
+
+	for log_line in league.last_season_summary_logs:
+		var label: Label = Label.new()
+		label.text = log_line
+		label.custom_minimum_size = Vector2(700, 24)
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		season_summary_list.add_child(label)
 
 func _add_player_growth_line(text: String, change: int = 0) -> void:
 	var label: Label = Label.new()
