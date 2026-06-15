@@ -54,6 +54,11 @@ layout_mode = 2
 custom_minimum_size = Vector2(86, 36)
 text = "赛后"
 
+[node name="TransferViewButton" type="Button" parent="Root/Header"]
+layout_mode = 2
+custom_minimum_size = Vector2(110, 36)
+text = "转会市场"
+
 [node name="RoundLabel" type="Label" parent="Root/Header"]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -86,61 +91,21 @@ layout_mode = 2
 text = ""
 theme_override_colors/font_color = Color(0.9, 0.15, 0.12, 1)
 
-[node name="LineupColumns" type="HBoxContainer" parent="Root/LineupPanel"]
+[node name="LineupTableHeader" type="GridContainer" parent="Root/LineupPanel"]
 layout_mode = 2
-theme_override_constants/separation = 14
+custom_minimum_size = Vector2(900, 0)
+columns = 8
 
-[node name="GKColumn" type="VBoxContainer" parent="Root/LineupPanel/LineupColumns"]
+[node name="LineupScroll" type="ScrollContainer" parent="Root/LineupPanel"]
 layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 1
+
+[node name="LineupList" type="VBoxContainer" parent="Root/LineupPanel/LineupScroll"]
+layout_mode = 2
+custom_minimum_size = Vector2(900, 0)
 size_flags_horizontal = 3
 theme_override_constants/separation = 4
-
-[node name="Title" type="Label" parent="Root/LineupPanel/LineupColumns/GKColumn"]
-layout_mode = 2
-text = "GK"
-
-[node name="Players" type="VBoxContainer" parent="Root/LineupPanel/LineupColumns/GKColumn"]
-layout_mode = 2
-theme_override_constants/separation = 2
-
-[node name="DFColumn" type="VBoxContainer" parent="Root/LineupPanel/LineupColumns"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 4
-
-[node name="Title" type="Label" parent="Root/LineupPanel/LineupColumns/DFColumn"]
-layout_mode = 2
-text = "DF"
-
-[node name="Players" type="VBoxContainer" parent="Root/LineupPanel/LineupColumns/DFColumn"]
-layout_mode = 2
-theme_override_constants/separation = 2
-
-[node name="MFColumn" type="VBoxContainer" parent="Root/LineupPanel/LineupColumns"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 4
-
-[node name="Title" type="Label" parent="Root/LineupPanel/LineupColumns/MFColumn"]
-layout_mode = 2
-text = "MF"
-
-[node name="Players" type="VBoxContainer" parent="Root/LineupPanel/LineupColumns/MFColumn"]
-layout_mode = 2
-theme_override_constants/separation = 2
-
-[node name="FWColumn" type="VBoxContainer" parent="Root/LineupPanel/LineupColumns"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 4
-
-[node name="Title" type="Label" parent="Root/LineupPanel/LineupColumns/FWColumn"]
-layout_mode = 2
-text = "FW"
-
-[node name="Players" type="VBoxContainer" parent="Root/LineupPanel/LineupColumns/FWColumn"]
-layout_mode = 2
-theme_override_constants/separation = 2
 
 [node name="PostMatchPanel" type="VBoxContainer" parent="Root"]
 visible = false
@@ -174,6 +139,63 @@ layout_mode = 2
 custom_minimum_size = Vector2(520, 0)
 size_flags_horizontal = 3
 theme_override_constants/separation = 4
+
+[node name="TransferMarketPanel" type="VBoxContainer" parent="Root"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="TransferHeader" type="HBoxContainer" parent="Root/TransferMarketPanel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TransferTitle" type="Label" parent="Root/TransferMarketPanel/TransferHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "转会市场"
+theme_override_font_sizes/font_size = 22
+
+[node name="MoneyLabel" type="Label" parent="Root/TransferMarketPanel/TransferHeader"]
+layout_mode = 2
+text = "资金"
+vertical_alignment = 1
+
+[node name="TransferMessage" type="Label" parent="Root/TransferMarketPanel"]
+layout_mode = 2
+text = ""
+theme_override_colors/font_color = Color(0.16, 0.68, 0.28, 1)
+
+[node name="MarketHeader" type="GridContainer" parent="Root/TransferMarketPanel"]
+layout_mode = 2
+columns = 9
+
+[node name="MarketScroll" type="ScrollContainer" parent="Root/TransferMarketPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="MarketList" type="VBoxContainer" parent="Root/TransferMarketPanel/MarketScroll"]
+layout_mode = 2
+custom_minimum_size = Vector2(920, 0)
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="TransferLogTitle" type="Label" parent="Root/TransferMarketPanel"]
+layout_mode = 2
+text = "转会日志"
+theme_override_font_sizes/font_size = 18
+
+[node name="TransferLogScroll" type="ScrollContainer" parent="Root/TransferMarketPanel"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 120)
+horizontal_scroll_mode = 0
+
+[node name="TransferLogList" type="VBoxContainer" parent="Root/TransferMarketPanel/TransferLogScroll"]
+layout_mode = 2
+custom_minimum_size = Vector2(920, 0)
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
 
 [node name="MainColumns" type="HSplitContainer" parent="Root"]
 layout_mode = 2

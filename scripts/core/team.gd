@@ -3,6 +3,7 @@ extends RefCounted
 
 var id: int
 var team_name: String
+var money: int = 0
 var players: Array[Player] = []
 var starting_players: Array[Player] = []
 
@@ -20,6 +21,12 @@ func _init(_id: int, _team_name: String) -> void:
 
 func add_player(player: Player) -> void:
 	players.append(player)
+
+func remove_player(player: Player) -> void:
+	if starting_players.has(player):
+		starting_players.erase(player)
+	if players.has(player):
+		players.erase(player)
 
 func set_player_starting(player: Player, selected: bool) -> void:
 	if selected:

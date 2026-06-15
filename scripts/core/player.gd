@@ -11,6 +11,10 @@ var attack: int
 var midfield: int
 var defense: int
 var goalkeeping: int
+var value: int = 0
+var salary: int = 0
+var contract_years: int = 0
+var is_transfer_listed: bool = false
 
 func _init(
 	_id: int,

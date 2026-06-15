@@ -10,6 +10,9 @@ var last_growth_logs: Array[Dictionary] = []
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var player_team: Team
 var growth_system: PlayerGrowthSystem = PlayerGrowthSystem.new()
+var transfer_system: TransferSystem = TransferSystem.new()
+var transfer_logs: Array[String] = []
+var lineup_warning: String = ""
 
 func _init(_league_name: String = "miniFM 联赛") -> void:
 	league_name = _league_name
@@ -21,6 +24,8 @@ func setup_default_league() -> void:
 	current_round = 0
 	last_results.clear()
 	last_growth_logs.clear()
+	transfer_logs.clear()
+	lineup_warning = ""
 	player_team = null
 
 	var team_names: Array[String] = [
@@ -31,10 +36,13 @@ func setup_default_league() -> void:
 	var player_id: int = 1
 	for team_index in range(team_names.size()):
 		var team: Team = Team.new(team_index + 1, team_names[team_index])
+		team.money = transfer_system.initial_money()
 		teams.append(team)
 
 		for player_index in range(18):
-			team.add_player(_create_player(player_id, team_index, player_index))
+			var player: Player = _create_player(player_id, team_index, player_index)
+			transfer_system.setup_player_finance(player, rng)
+			team.add_player(player)
 			player_id += 1
 
 		team.auto_select_starting_lineup()
@@ -61,6 +69,11 @@ func play_next_round() -> Array[Dictionary]:
 		last_results.append(MatchSimulator.simulate(home, away, rng))
 
 	last_growth_logs = growth_system.process_teams(teams, rng, player_team)
+	transfer_system.refresh_player_finance(teams)
+	transfer_system.clear_logs()
+	transfer_system.process_ai_transfers(teams, player_team)
+	_sync_transfer_logs()
+	lineup_warning = transfer_system.lineup_warning
 	current_round += 1
 	return last_results
 
@@ -89,6 +102,38 @@ func validate_player_lineup() -> Dictionary:
 		return {"ok": false, "message": error}
 
 	return {"ok": true, "message": ""}
+
+func listed_players() -> Array[Dictionary]:
+	return transfer_system.listed_players(teams)
+
+func buy_player(player: Player) -> String:
+	var seller: Team = owner_of_player(player)
+	if seller == null:
+		return "球员不存在"
+	transfer_system.clear_logs()
+	var message: String = transfer_system.buy_player(player_team, seller, player, true)
+	_sync_transfer_logs()
+	return message
+
+func toggle_player_listing(player: Player) -> String:
+	transfer_system.clear_logs()
+	var message: String = transfer_system.toggle_player_listing(player_team, player)
+	_sync_transfer_logs()
+	return message
+
+func owner_of_player(player: Player) -> Team:
+	for team in teams:
+		if team.players.has(player):
+			return team
+	return null
+
+func format_money(amount: int) -> String:
+	return transfer_system.format_money(amount)
+
+func _sync_transfer_logs() -> void:
+	transfer_logs.clear()
+	for log_line in transfer_system.logs:
+		transfer_logs.append(log_line)
 
 func _create_player(player_id: int, team_index: int, player_index: int) -> Player:
 	var positions: Array[String] = ["GK", "GK", "DF", "DF", "DF", "DF", "DF", "MF", "MF", "MF", "MF", "MF", "FW", "FW", "FW", "FW", "MF", "DF"]
