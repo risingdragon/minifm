@@ -6,8 +6,10 @@ var teams: Array[Team] = []
 var schedule: Array = []
 var current_round: int = 0
 var last_results: Array[Dictionary] = []
+var last_growth_logs: Array[Dictionary] = []
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var player_team: Team
+var growth_system: PlayerGrowthSystem = PlayerGrowthSystem.new()
 
 func _init(_league_name: String = "miniFM 联赛") -> void:
 	league_name = _league_name
@@ -18,6 +20,7 @@ func setup_default_league() -> void:
 	schedule.clear()
 	current_round = 0
 	last_results.clear()
+	last_growth_logs.clear()
 	player_team = null
 
 	var team_names: Array[String] = [
@@ -52,10 +55,12 @@ func play_next_round() -> Array[Dictionary]:
 
 	var fixtures: Array = schedule[current_round]
 	for fixture in fixtures:
-		var home: Team = fixture["home"] as Team
-		var away: Team = fixture["away"] as Team
+		var fixture_data: Dictionary = fixture as Dictionary
+		var home: Team = fixture_data["home"] as Team
+		var away: Team = fixture_data["away"] as Team
 		last_results.append(MatchSimulator.simulate(home, away, rng))
 
+	last_growth_logs = growth_system.process_teams(teams, rng, player_team)
 	current_round += 1
 	return last_results
 
@@ -88,26 +93,29 @@ func validate_player_lineup() -> Dictionary:
 func _create_player(player_id: int, team_index: int, player_index: int) -> Player:
 	var positions: Array[String] = ["GK", "GK", "DF", "DF", "DF", "DF", "DF", "MF", "MF", "MF", "MF", "MF", "FW", "FW", "FW", "FW", "MF", "DF"]
 	var position: String = positions[player_index]
-	var base: int = 52 + team_index * 2 + rng.randi_range(-4, 8)
+	var base: int = 104 + team_index * 4 + rng.randi_range(-8, 16)
+	var age: int = rng.randi_range(18, 34)
+	var ability: int = clampi(base, 1, 200)
+	var potential: int = clampi(ability + rng.randi_range(0, 32), ability, 200)
 	var player_name: String = "%s %02d" % [_position_name(position), player_index + 1]
 
-	var attack: int = clampi(base + rng.randi_range(-8, 12), 35, 92)
-	var midfield: int = clampi(base + rng.randi_range(-8, 12), 35, 92)
-	var defense: int = clampi(base + rng.randi_range(-8, 12), 35, 92)
-	var goalkeeping: int = clampi(base + rng.randi_range(-10, 10), 30, 90)
+	var attack: int = clampi(ability + rng.randi_range(-16, 24), 1, 200)
+	var midfield: int = clampi(ability + rng.randi_range(-16, 24), 1, 200)
+	var defense: int = clampi(ability + rng.randi_range(-16, 24), 1, 200)
+	var goalkeeping: int = clampi(ability + rng.randi_range(-20, 20), 1, 200)
 
 	match position:
 		"GK":
-			goalkeeping = clampi(base + rng.randi_range(8, 18), 45, 95)
-			attack = clampi(base + rng.randi_range(-20, -8), 20, 65)
+			goalkeeping = clampi(ability + rng.randi_range(16, 36), 1, 200)
+			attack = clampi(ability + rng.randi_range(-40, -16), 1, 200)
 		"DF":
-			defense = clampi(base + rng.randi_range(5, 16), 45, 95)
+			defense = clampi(ability + rng.randi_range(10, 32), 1, 200)
 		"MF":
-			midfield = clampi(base + rng.randi_range(5, 16), 45, 95)
+			midfield = clampi(ability + rng.randi_range(10, 32), 1, 200)
 		"FW":
-			attack = clampi(base + rng.randi_range(5, 16), 45, 95)
+			attack = clampi(ability + rng.randi_range(10, 32), 1, 200)
 
-	return Player.new(player_id, player_name, position, attack, midfield, defense, goalkeeping)
+	return Player.new(player_id, player_name, position, age, ability, potential, attack, midfield, defense, goalkeeping)
 
 func _position_name(position: String) -> String:
 	match position:

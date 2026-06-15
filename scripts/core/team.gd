@@ -90,13 +90,13 @@ func lineup_attack_strength() -> float:
 	for player in starting_players:
 		match player.position:
 			"DF":
-				attack_total += player.attack * 0.15 + player.midfield * 0.1
+				attack_total += player.ability * 0.2
 			"MF":
-				attack_total += player.attack * 0.45 + player.midfield * 0.35
+				attack_total += player.ability * 0.65
 			"FW":
-				attack_total += player.attack * 0.85 + player.midfield * 0.15
+				attack_total += player.ability * 1.0
 
-	return attack_total / 10.0
+	return attack_total / 20.0
 
 func lineup_defense_strength() -> float:
 	var defense_total: float = 0.0
@@ -104,15 +104,15 @@ func lineup_defense_strength() -> float:
 	for player in starting_players:
 		match player.position:
 			"GK":
-				defense_total += player.goalkeeping * 1.0 + player.defense * 0.2
+				defense_total += player.ability * 1.2
 			"DF":
-				defense_total += player.defense * 0.85 + player.midfield * 0.15
+				defense_total += player.ability * 1.0
 			"MF":
-				defense_total += player.defense * 0.35 + player.midfield * 0.35
+				defense_total += player.ability * 0.55
 			"FW":
-				defense_total += player.defense * 0.1 + player.midfield * 0.1
+				defense_total += player.ability * 0.15
 
-	return defense_total / 10.0
+	return defense_total / 20.0
 
 func reset_record() -> void:
 	played = 0

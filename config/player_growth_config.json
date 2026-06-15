@@ -1,0 +1,35 @@
+{
+  "min_ability": 1,
+  "max_ability": 200,
+  "age_rules": [
+    {
+      "min_age": 18,
+      "max_age": 23,
+      "grow_probability": 0.5,
+      "decline_probability": 0.0,
+      "change_value": 1
+    },
+    {
+      "min_age": 24,
+      "max_age": 28,
+      "grow_probability": 0.25,
+      "decline_probability": 0.0,
+      "change_value": 1
+    },
+    {
+      "min_age": 29,
+      "max_age": 31,
+      "grow_probability": 0.0,
+      "decline_probability": 0.5,
+      "change_value": 1
+    },
+    {
+      "min_age": 32,
+      "max_age": 200,
+      "grow_probability": 0.0,
+      "decline_probability": 0.75,
+      "change_value": 1
+    }
+  ]
+}
+
