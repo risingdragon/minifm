@@ -18,6 +18,7 @@ const MARKET_SORT_KEYS: Array[String] = ["name", "age", "position", "ability", "
 @onready var lineup_panel: VBoxContainer = $Root/LineupPanel
 @onready var lineup_title: Label = $Root/LineupPanel/LineupHeader/LineupTitle
 @onready var lineup_status: Label = $Root/LineupPanel/LineupHeader/LineupStatus
+@onready var recommend_lineup_button: Button = $Root/LineupPanel/LineupHeader/RecommendLineupButton
 @onready var lineup_error: Label = $Root/LineupPanel/LineupError
 @onready var lineup_table_header: GridContainer = $Root/LineupPanel/LineupTableHeader
 @onready var lineup_list: VBoxContainer = $Root/LineupPanel/LineupScroll/LineupList
@@ -57,6 +58,7 @@ func _ready() -> void:
 	post_match_view_button.pressed.connect(_show_post_match_view)
 	transfer_view_button.pressed.connect(_show_transfer_view)
 	season_summary_view_button.pressed.connect(_show_season_summary_view)
+	recommend_lineup_button.pressed.connect(_on_recommend_lineup_pressed)
 
 	_build_lineup_view()
 	_build_standings_header()
@@ -362,6 +364,11 @@ func _on_player_toggled(selected: bool, player: Player) -> void:
 	league.player_team.set_player_starting(player, selected)
 	_refresh_lineup_status()
 
+func _on_recommend_lineup_pressed() -> void:
+	league.player_team.auto_select_starting_lineup()
+	lineup_error.text = ""
+	_build_lineup_view()
+
 func _refresh_lineup_status() -> void:
 	var selected_count: int = league.player_team.starting_count()
 	var gk_count: int = league.player_team.starting_gk_count()
@@ -561,13 +568,31 @@ func _render_transfer_logs() -> void:
 		transfer_log_list.add_child(empty_label)
 		return
 
-	for log_line in league.transfer_logs:
+	for log_entry in league.transfer_logs:
+		var log_data: Dictionary = log_entry as Dictionary
+		var text: String = str(log_data["text"])
+		var highlight: bool = bool(log_data["highlight"])
+		var row_container: PanelContainer = PanelContainer.new()
+		row_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		if highlight:
+			var highlight_style: StyleBoxFlat = StyleBoxFlat.new()
+			highlight_style.bg_color = Color(0.12, 0.32, 0.18, 0.9)
+			highlight_style.set_content_margin_all(5.0)
+			row_container.add_theme_stylebox_override("panel", highlight_style)
+		else:
+			var empty_style: StyleBoxEmpty = StyleBoxEmpty.new()
+			empty_style.set_content_margin_all(5.0)
+			row_container.add_theme_stylebox_override("panel", empty_style)
+
 		var label: Label = Label.new()
-		label.text = log_line
+		label.text = text
 		label.custom_minimum_size = Vector2(520, 24)
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		transfer_log_list.add_child(label)
+		if highlight:
+			label.add_theme_color_override("font_color", Color(0.95, 1.0, 0.92, 1.0))
+		row_container.add_child(label)
+		transfer_log_list.add_child(row_container)
 
 func _market_label(text: String, emphasized: bool = false) -> Label:
 	var label: Label = Label.new()

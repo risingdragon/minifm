@@ -13,7 +13,7 @@ var player_team: Team
 var growth_system: PlayerGrowthSystem = PlayerGrowthSystem.new()
 var transfer_system: TransferSystem = TransferSystem.new()
 var youth_system: YouthSystem = YouthSystem.new()
-var transfer_logs: Array[String] = []
+var transfer_logs: Array[Dictionary] = []
 var lineup_warning: String = ""
 var season_year: int = 2026
 var season_complete: bool = false
@@ -148,7 +148,7 @@ func buy_player(player: Player) -> String:
 
 func toggle_player_listing(player: Player) -> String:
 	transfer_system.clear_logs()
-	var message: String = transfer_system.toggle_player_listing(player_team, player)
+	var message: String = transfer_system.toggle_player_listing(player_team, player, true)
 	_sync_transfer_logs()
 	return message
 
@@ -163,8 +163,9 @@ func format_money(amount: int) -> String:
 
 func _sync_transfer_logs() -> void:
 	transfer_logs.clear()
-	for log_line in transfer_system.logs:
-		transfer_logs.append(log_line)
+	for log_entry in transfer_system.logs:
+		if log_entry is Dictionary:
+			transfer_logs.append(log_entry)
 
 func _finish_season() -> void:
 	season_complete = true

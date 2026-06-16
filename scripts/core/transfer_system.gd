@@ -4,7 +4,7 @@ extends RefCounted
 const CONFIG_PATH: String = "res://config/transfer_config.json"
 
 var config: Dictionary = {}
-var logs: Array[String] = []
+var logs: Array[Dictionary] = []
 var lineup_warning: String = ""
 
 func _init() -> void:
@@ -51,23 +51,23 @@ func listed_players(teams: Array[Team]) -> Array[Dictionary]:
 				result.append({"player": player, "team": team})
 	return result
 
-func toggle_player_listing(team: Team, player: Player) -> String:
+func toggle_player_listing(team: Team, player: Player, highlight_log: bool = false) -> String:
 	if not team.players.has(player):
 		return "球员不属于该球队"
 
 	if player.is_transfer_listed:
 		player.is_transfer_listed = false
-		logs.append("%s 取消挂牌 %s" % [team.team_name, player.player_name])
+		_add_log("%s 取消挂牌 %s" % [team.team_name, player.player_name], highlight_log)
 		return "已取消挂牌"
 
 	if team.players.size() <= 11:
 		return "球队人数不足，无法挂牌"
 
 	player.is_transfer_listed = true
-	logs.append("%s 挂牌 %s（身价%s）" % [team.team_name, player.player_name, format_money(player.value)])
+	_add_log("%s 挂牌 %s（身价%s）" % [team.team_name, player.player_name, format_money(player.value)], highlight_log)
 	return "已挂牌"
 
-func buy_player(buyer: Team, seller: Team, player: Player, is_player_buyer: bool = false) -> String:
+func buy_player(buyer: Team, seller: Team, player: Player, highlight_log: bool = false) -> String:
 	if buyer == seller:
 		return "不能购买本队球员"
 
@@ -86,11 +86,12 @@ func buy_player(buyer: Team, seller: Team, player: Player, is_player_buyer: bool
 	buyer.add_player(player)
 	player.is_transfer_listed = false
 
-	if is_player_buyer:
-		logs.append("%s 签下 %s（转会费%s）" % [buyer.team_name, player.player_name, format_money(player.value)])
-		return "转会成功"
-
-	logs.append("%s 签下 %s（转会费%s）" % [buyer.team_name, player.player_name, format_money(player.value)])
+	_add_log("%s 签下 %s 的 %s（转会费%s）" % [
+		buyer.team_name,
+		seller.team_name,
+		player.player_name,
+		format_money(player.value)
+	], highlight_log)
 	return "转会成功"
 
 func process_ai_transfers(teams: Array[Team], player_team: Team) -> void:
@@ -125,7 +126,7 @@ func _process_ai_listing(teams: Array[Team], player_team: Team) -> void:
 
 		if best_player != null and best_score >= threshold and listed_count < max_per_team:
 			best_player.is_transfer_listed = true
-			logs.append("%s 挂牌 %s（身价%s）" % [team.team_name, best_player.player_name, format_money(best_player.value)])
+			_add_log("%s 挂牌 %s（身价%s）" % [team.team_name, best_player.player_name, format_money(best_player.value)], false)
 			listed_count += 1
 
 func _process_ai_buying(teams: Array[Team], player_team: Team) -> void:
@@ -153,10 +154,12 @@ func _process_ai_buying(teams: Array[Team], player_team: Team) -> void:
 
 		if best_player != null and best_seller != null:
 			var was_player_seller: bool = best_seller == player_team
-			buy_player(buyer, best_seller, best_player)
+			buy_player(buyer, best_seller, best_player, was_player_seller)
 			if was_player_seller:
-				logs.append("玩家成功出售 %s（收入%s）" % [best_player.player_name, format_money(best_player.value)])
 				lineup_warning = "%s 已转会离队，请重新调整阵容" % best_player.player_name
+
+func _add_log(text: String, highlight: bool = false) -> void:
+	logs.append({"text": text, "highlight": highlight})
 
 func _listing_score(team: Team, player: Player) -> int:
 	var score: int = 0

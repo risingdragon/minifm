@@ -91,6 +91,11 @@ layout_mode = 2
 text = "首发 11 人，GK 1 人"
 vertical_alignment = 1
 
+[node name="RecommendLineupButton" type="Button" parent="Root/LineupPanel/LineupHeader"]
+layout_mode = 2
+custom_minimum_size = Vector2(110, 34)
+text = "推荐阵容"
+
 [node name="LineupError" type="Label" parent="Root/LineupPanel"]
 layout_mode = 2
 text = ""
