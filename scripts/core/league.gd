@@ -189,7 +189,7 @@ func _create_player(player_id: int, team_index: int, player_index: int) -> Playe
 	var age: int = rng.randi_range(18, 34)
 	var ability: int = clampi(base, 1, 200)
 	var potential: int = clampi(ability + rng.randi_range(0, 32), ability, 200)
-	var player_name: String = "%s %02d" % [_position_name(position), player_index + 1]
+	var player_name: String = youth_system.random_name(rng)
 
 	var attack: int = clampi(ability + rng.randi_range(-16, 24), 1, 200)
 	var midfield: int = clampi(ability + rng.randi_range(-16, 24), 1, 200)
@@ -208,19 +208,6 @@ func _create_player(player_id: int, team_index: int, player_index: int) -> Playe
 			attack = clampi(ability + rng.randi_range(10, 32), 1, 200)
 
 	return Player.new(player_id, player_name, position, age, ability, potential, attack, midfield, defense, goalkeeping)
-
-func _position_name(position: String) -> String:
-	match position:
-		"GK":
-			return "门将"
-		"DF":
-			return "后卫"
-		"MF":
-			return "中场"
-		"FW":
-			return "前锋"
-		_:
-			return "球员"
 
 func _generate_round_robin_schedule() -> void:
 	var rotation: Array[Team] = teams.duplicate()

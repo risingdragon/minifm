@@ -29,6 +29,9 @@ func process_season_end(
 
 	return logs
 
+func random_name(rng: RandomNumberGenerator) -> String:
+	return _random_name(rng)
+
 func _age_and_retire_players(team: Team, rng: RandomNumberGenerator, logs: Array[String], log_team: Team) -> void:
 	var retired_players: Array[Player] = []
 
