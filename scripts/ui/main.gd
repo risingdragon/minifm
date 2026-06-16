@@ -14,6 +14,7 @@ const MARKET_SORT_KEYS: Array[String] = ["name", "age", "position", "ability", "
 @onready var lineup_view_button: Button = $Root/Header/LineupViewButton
 @onready var post_match_view_button: Button = $Root/Header/PostMatchViewButton
 @onready var transfer_view_button: Button = $Root/Header/TransferViewButton
+@onready var finance_view_button: Button = $Root/Header/FinanceViewButton
 @onready var season_summary_view_button: Button = $Root/Header/SeasonSummaryViewButton
 @onready var lineup_panel: VBoxContainer = $Root/LineupPanel
 @onready var lineup_title: Label = $Root/LineupPanel/LineupHeader/LineupTitle
@@ -26,12 +27,16 @@ const MARKET_SORT_KEYS: Array[String] = ["name", "age", "position", "ability", "
 @onready var post_match_title: Label = $Root/PostMatchPanel/PostMatchTitle
 @onready var player_match_result: Label = $Root/PostMatchPanel/PlayerMatchResult
 @onready var player_growth_list: VBoxContainer = $Root/PostMatchPanel/PlayerGrowthScroll/PlayerGrowthList
+@onready var match_finance_list: VBoxContainer = $Root/PostMatchPanel/MatchFinanceList
 @onready var transfer_market_panel: VBoxContainer = $Root/TransferMarketPanel
 @onready var money_label: Label = $Root/TransferMarketPanel/TransferHeader/MoneyLabel
 @onready var transfer_message: Label = $Root/TransferMarketPanel/TransferMessage
 @onready var market_header: GridContainer = $Root/TransferMarketPanel/MarketHeader
 @onready var market_list: VBoxContainer = $Root/TransferMarketPanel/MarketScroll/MarketList
 @onready var transfer_log_list: VBoxContainer = $Root/TransferMarketPanel/TransferLogScroll/TransferLogList
+@onready var finance_panel: VBoxContainer = $Root/FinancePanel
+@onready var finance_warning: Label = $Root/FinancePanel/FinanceWarning
+@onready var finance_list: GridContainer = $Root/FinancePanel/FinanceList
 @onready var season_summary_panel: VBoxContainer = $Root/SeasonSummaryPanel
 @onready var season_summary_title: Label = $Root/SeasonSummaryPanel/SeasonSummaryTitle
 @onready var season_summary_list: VBoxContainer = $Root/SeasonSummaryPanel/SeasonSummaryScroll/SeasonSummaryList
@@ -57,6 +62,7 @@ func _ready() -> void:
 	lineup_view_button.pressed.connect(_show_lineup_view)
 	post_match_view_button.pressed.connect(_show_post_match_view)
 	transfer_view_button.pressed.connect(_show_transfer_view)
+	finance_view_button.pressed.connect(_show_finance_view)
 	season_summary_view_button.pressed.connect(_show_season_summary_view)
 	recommend_lineup_button.pressed.connect(_on_recommend_lineup_pressed)
 
@@ -129,6 +135,7 @@ func _refresh() -> void:
 	_render_standings()
 	_refresh_lineup_status()
 	_refresh_money_label()
+	_render_finance_view()
 	_render_transfer_logs()
 
 func _show_standings_view() -> void:
@@ -136,11 +143,13 @@ func _show_standings_view() -> void:
 	lineup_panel.visible = false
 	post_match_panel.visible = false
 	transfer_market_panel.visible = false
+	finance_panel.visible = false
 	season_summary_panel.visible = false
 	standings_view_button.disabled = true
 	lineup_view_button.disabled = false
 	post_match_view_button.disabled = league.current_round == 0
 	transfer_view_button.disabled = false
+	finance_view_button.disabled = false
 	season_summary_view_button.disabled = not league.is_season_complete()
 
 func _show_lineup_view() -> void:
@@ -148,11 +157,13 @@ func _show_lineup_view() -> void:
 	lineup_panel.visible = true
 	post_match_panel.visible = false
 	transfer_market_panel.visible = false
+	finance_panel.visible = false
 	season_summary_panel.visible = false
 	standings_view_button.disabled = false
 	lineup_view_button.disabled = true
 	post_match_view_button.disabled = league.current_round == 0
 	transfer_view_button.disabled = false
+	finance_view_button.disabled = false
 	season_summary_view_button.disabled = not league.is_season_complete()
 
 func _show_post_match_view() -> void:
@@ -160,11 +171,13 @@ func _show_post_match_view() -> void:
 	lineup_panel.visible = false
 	post_match_panel.visible = true
 	transfer_market_panel.visible = false
+	finance_panel.visible = false
 	season_summary_panel.visible = false
 	standings_view_button.disabled = false
 	lineup_view_button.disabled = false
 	post_match_view_button.disabled = true
 	transfer_view_button.disabled = false
+	finance_view_button.disabled = false
 	season_summary_view_button.disabled = not league.is_season_complete()
 
 func _show_transfer_view() -> void:
@@ -173,11 +186,28 @@ func _show_transfer_view() -> void:
 	lineup_panel.visible = false
 	post_match_panel.visible = false
 	transfer_market_panel.visible = true
+	finance_panel.visible = false
 	season_summary_panel.visible = false
 	standings_view_button.disabled = false
 	lineup_view_button.disabled = false
 	post_match_view_button.disabled = league.current_round == 0
 	transfer_view_button.disabled = true
+	finance_view_button.disabled = false
+	season_summary_view_button.disabled = not league.is_season_complete()
+
+func _show_finance_view() -> void:
+	_render_finance_view()
+	standings_view.visible = false
+	lineup_panel.visible = false
+	post_match_panel.visible = false
+	transfer_market_panel.visible = false
+	finance_panel.visible = true
+	season_summary_panel.visible = false
+	standings_view_button.disabled = false
+	lineup_view_button.disabled = false
+	post_match_view_button.disabled = league.current_round == 0
+	transfer_view_button.disabled = false
+	finance_view_button.disabled = true
 	season_summary_view_button.disabled = not league.is_season_complete()
 
 func _show_season_summary_view() -> void:
@@ -186,17 +216,20 @@ func _show_season_summary_view() -> void:
 	lineup_panel.visible = false
 	post_match_panel.visible = false
 	transfer_market_panel.visible = false
+	finance_panel.visible = false
 	season_summary_panel.visible = true
 	standings_view_button.disabled = false
 	lineup_view_button.disabled = false
 	post_match_view_button.disabled = league.current_round == 0
 	transfer_view_button.disabled = false
+	finance_view_button.disabled = false
 	season_summary_view_button.disabled = true
 
 func _render_post_match_view(played_round: int, results: Array[Dictionary]) -> void:
 	post_match_title.text = "第 %d 轮赛后" % played_round
 	player_match_result.text = _player_match_summary(results)
 	_clear_children(player_growth_list)
+	_render_match_finance_logs()
 
 	if league.last_growth_logs.is_empty():
 		_add_player_growth_line("本轮没有球员能力变化")
@@ -211,7 +244,7 @@ func _render_season_summary() -> void:
 	_clear_children(season_summary_list)
 	season_summary_title.text = "%d赛季总结" % league.season_year
 
-	if league.last_season_summary_logs.is_empty():
+	if league.last_season_summary_logs.is_empty() and league.last_finance_report_logs.is_empty():
 		var empty_label: Label = Label.new()
 		empty_label.text = "暂无赛季总结"
 		empty_label.custom_minimum_size = Vector2(700, 24)
@@ -225,6 +258,62 @@ func _render_season_summary() -> void:
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		season_summary_list.add_child(label)
+
+	for log_line in league.last_finance_report_logs:
+		var label: Label = Label.new()
+		label.text = log_line
+		label.custom_minimum_size = Vector2(700, 24)
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		season_summary_list.add_child(label)
+
+func _render_finance_view() -> void:
+	_clear_children(finance_list)
+	var team: Team = league.player_team
+	var warning: String = league.cash_warning(team)
+	finance_warning.text = warning
+	finance_warning.visible = not warning.is_empty()
+
+	_add_finance_row("当前资金", league.format_money(team.money))
+	_add_finance_row("赛季收入", league.format_money(team.season_income))
+	_add_finance_row("赛季支出", league.format_money(team.season_expense))
+	_add_finance_row("门票收入", league.format_money(team.season_ticket_income))
+	_add_finance_row("奖金收入", league.format_money(team.season_bonus_income))
+	_add_finance_row("转会收入", league.format_money(team.season_transfer_income))
+	_add_finance_row("转会支出", league.format_money(team.season_transfer_expense))
+	_add_finance_row("工资支出", league.format_money(team.season_salary_expense))
+	_add_finance_row("赛季利润", league.format_money(team.season_income - team.season_expense))
+
+func _add_finance_row(name: String, value: String) -> void:
+	var name_label: Label = Label.new()
+	name_label.text = name
+	name_label.custom_minimum_size = Vector2(160, 28)
+	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	finance_list.add_child(name_label)
+
+	var value_label: Label = Label.new()
+	value_label.text = value
+	value_label.custom_minimum_size = Vector2(180, 28)
+	value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	value_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	finance_list.add_child(value_label)
+
+func _render_match_finance_logs() -> void:
+	_clear_children(match_finance_list)
+	if league.last_finance_logs.is_empty():
+		_add_match_finance_line("暂无财务变化")
+		return
+	for log_line in league.last_finance_logs:
+		_add_match_finance_line(log_line)
+
+func _add_match_finance_line(text: String) -> void:
+	var label: Label = Label.new()
+	label.text = text
+	label.custom_minimum_size = Vector2(520, 24)
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	match_finance_list.add_child(label)
 
 func _add_player_growth_line(text: String, change: int = 0) -> void:
 	var label: Label = Label.new()

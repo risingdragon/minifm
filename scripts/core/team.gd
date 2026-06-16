@@ -4,6 +4,13 @@ extends RefCounted
 var id: int
 var team_name: String
 var money: int = 0
+var season_income: int = 0
+var season_expense: int = 0
+var season_transfer_income: int = 0
+var season_transfer_expense: int = 0
+var season_salary_expense: int = 0
+var season_ticket_income: int = 0
+var season_bonus_income: int = 0
 var players: Array[Player] = []
 var starting_players: Array[Player] = []
 

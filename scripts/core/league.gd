@@ -13,7 +13,10 @@ var player_team: Team
 var growth_system: PlayerGrowthSystem = PlayerGrowthSystem.new()
 var transfer_system: TransferSystem = TransferSystem.new()
 var youth_system: YouthSystem = YouthSystem.new()
+var economy_system: EconomySystem = EconomySystem.new()
 var transfer_logs: Array[Dictionary] = []
+var last_finance_logs: Array[String] = []
+var last_finance_report_logs: Array[String] = []
 var lineup_warning: String = ""
 var season_year: int = 2026
 var season_complete: bool = false
@@ -30,6 +33,8 @@ func setup_default_league() -> void:
 	last_results.clear()
 	last_growth_logs.clear()
 	last_season_summary_logs.clear()
+	last_finance_logs.clear()
+	last_finance_report_logs.clear()
 	transfer_logs.clear()
 	lineup_warning = ""
 	season_year = 2026
@@ -45,6 +50,7 @@ func setup_default_league() -> void:
 	for team_index in range(team_names.size()):
 		var team: Team = Team.new(team_index + 1, team_names[team_index])
 		team.money = transfer_system.initial_money()
+		economy_system.reset_team_finance(team)
 		teams.append(team)
 
 		for player_index in range(18):
@@ -64,6 +70,8 @@ func has_next_round() -> bool:
 func play_next_round() -> Array[Dictionary]:
 	last_results.clear()
 	last_season_summary_logs.clear()
+	last_finance_logs.clear()
+	last_finance_report_logs.clear()
 
 	if not has_next_round():
 		return last_results
@@ -75,10 +83,14 @@ func play_next_round() -> Array[Dictionary]:
 		var fixture_data: Dictionary = fixture as Dictionary
 		var home: Team = fixture_data["home"] as Team
 		var away: Team = fixture_data["away"] as Team
-		last_results.append(MatchSimulator.simulate(home, away, rng))
+		var result: Dictionary = MatchSimulator.simulate(home, away, rng)
+		last_results.append(result)
+		_append_finance_logs(economy_system.settle_match(result), home, away)
 
 	last_growth_logs = growth_system.process_teams(teams, rng, player_team)
 	transfer_system.refresh_player_finance(teams)
+	transfer_system.low_cash_threshold = economy_system.ai_low_cash_threshold()
+	transfer_system.low_cash_list_score = economy_system.ai_low_cash_list_score()
 	transfer_system.clear_logs()
 	transfer_system.process_ai_transfers(teams, player_team)
 	_sync_transfer_logs()
@@ -96,10 +108,13 @@ func start_next_season() -> void:
 	last_results.clear()
 	last_growth_logs.clear()
 	last_season_summary_logs.clear()
+	last_finance_logs.clear()
+	last_finance_report_logs.clear()
 	lineup_warning = ""
 
 	for team in teams:
 		team.reset_record()
+		economy_system.reset_team_finance(team)
 		if team != player_team:
 			team.auto_select_starting_lineup()
 
@@ -159,7 +174,10 @@ func owner_of_player(player: Player) -> Team:
 	return null
 
 func format_money(amount: int) -> String:
-	return transfer_system.format_money(amount)
+	return economy_system.format_money(amount)
+
+func cash_warning(team: Team) -> String:
+	return economy_system.cash_warning(team)
 
 func _sync_transfer_logs() -> void:
 	transfer_logs.clear()
@@ -173,15 +191,45 @@ func _finish_season() -> void:
 		teams,
 		rng,
 		transfer_system,
+		economy_system,
 		season_year,
 		next_player_id,
 		player_team
 	)
 	next_player_id = youth_system.next_player_id
+	last_season_summary_logs.append_array(_player_ranking_bonus_logs())
+	last_finance_report_logs = _build_player_finance_report()
 	transfer_system.refresh_player_finance(teams)
 	for team in teams:
 		if team != player_team:
 			team.auto_select_starting_lineup()
+
+func _append_finance_logs(logs: Array[String], home: Team, away: Team) -> void:
+	if home != player_team and away != player_team:
+		return
+	for log_line in logs:
+		if log_line.begins_with(player_team.team_name):
+			last_finance_logs.append(log_line)
+
+func _player_ranking_bonus_logs() -> Array[String]:
+	var logs: Array[String] = []
+	var bonus_logs: Array[String] = economy_system.settle_ranking_bonus(standings())
+	for log_line in bonus_logs:
+		if log_line.begins_with(player_team.team_name):
+			logs.append(log_line)
+	return logs
+
+func _build_player_finance_report() -> Array[String]:
+	return [
+		"%d赛季财务报告" % season_year,
+		"门票收入：%s" % format_money(player_team.season_ticket_income),
+		"奖金收入：%s" % format_money(player_team.season_bonus_income),
+		"转会收入：%s" % format_money(player_team.season_transfer_income),
+		"转会支出：%s" % format_money(player_team.season_transfer_expense),
+		"工资支出：%s" % format_money(player_team.season_salary_expense),
+		"赛季利润：%s" % format_money(player_team.season_income - player_team.season_expense),
+		"赛季结束资金：%s" % format_money(player_team.money)
+	]
 
 func _create_player(player_id: int, team_index: int, player_index: int) -> Player:
 	var positions: Array[String] = ["GK", "GK", "DF", "DF", "DF", "DF", "DF", "MF", "MF", "MF", "MF", "MF", "FW", "FW", "FW", "FW", "MF", "DF"]

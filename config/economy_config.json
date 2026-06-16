@@ -1,0 +1,25 @@
+{
+  "home_ticket_income": 500000,
+  "away_ticket_income": 200000,
+  "win_bonus": 100000,
+  "draw_bonus": 30000,
+  "lose_bonus": 0,
+  "salary_divisor_per_match": 30,
+  "youth_player_cost": 100000,
+  "minimum_cash_warning": 0,
+  "ai_low_cash_threshold": 2000000,
+  "ai_low_cash_list_score": 20,
+  "ranking_bonus": {
+    "1": 10000000,
+    "2": 8000000,
+    "3": 6000000,
+    "4": 5000000,
+    "5": 4000000,
+    "6": 3000000,
+    "7": 2500000,
+    "8": 2000000,
+    "9": 1500000,
+    "10": 1000000
+  }
+}
+

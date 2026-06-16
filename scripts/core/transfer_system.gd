@@ -6,6 +6,8 @@ const CONFIG_PATH: String = "res://config/transfer_config.json"
 var config: Dictionary = {}
 var logs: Array[Dictionary] = []
 var lineup_warning: String = ""
+var low_cash_threshold: int = 2000000
+var low_cash_list_score: int = 20
 
 func _init() -> void:
 	_load_config()
@@ -82,6 +84,10 @@ func buy_player(buyer: Team, seller: Team, player: Player, highlight_log: bool =
 
 	buyer.money -= player.value
 	seller.money += player.value
+	buyer.season_transfer_expense += player.value
+	buyer.season_expense += player.value
+	seller.season_transfer_income += player.value
+	seller.season_income += player.value
 	seller.remove_player(player)
 	buyer.add_player(player)
 	player.is_transfer_listed = false
@@ -163,6 +169,8 @@ func _add_log(text: String, highlight: bool = false) -> void:
 
 func _listing_score(team: Team, player: Player) -> int:
 	var score: int = 0
+	if team.money < low_cash_threshold:
+		score += low_cash_list_score
 	if player.age >= int(config.get("ai_list_old_age", 32)):
 		score += int(config.get("ai_list_old_age_score", 30))
 	if player.age >= int(config.get("ai_list_very_old_age", 35)):

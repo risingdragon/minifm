@@ -13,7 +13,8 @@ func process_season_end(
 	teams: Array[Team],
 	rng: RandomNumberGenerator,
 	transfer_system: TransferSystem,
-	season_year: int,
+	economy_system: EconomySystem,
+	_season_year: int,
 	start_player_id: int,
 	log_team: Team
 ) -> Array[String]:
@@ -24,8 +25,8 @@ func process_season_end(
 		_age_and_retire_players(team, rng, logs, log_team)
 
 	for team in teams:
-		_generate_base_youth_players(team, rng, transfer_system, logs, log_team)
-		_fill_team_to_minimum_size(team, rng, transfer_system, logs, log_team)
+		_generate_base_youth_players(team, rng, transfer_system, economy_system, logs, log_team)
+		_fill_team_to_minimum_size(team, rng, transfer_system, economy_system, logs, log_team)
 
 	return logs
 
@@ -49,6 +50,7 @@ func _generate_base_youth_players(
 	team: Team,
 	rng: RandomNumberGenerator,
 	transfer_system: TransferSystem,
+	economy_system: EconomySystem,
 	logs: Array[String],
 	log_team: Team
 ) -> void:
@@ -56,13 +58,15 @@ func _generate_base_youth_players(
 	for _index in range(count):
 		var player: Player = _create_youth_player(rng, transfer_system)
 		team.add_player(player)
+		var cost: int = economy_system.charge_youth_cost(team)
 		if team == log_team:
-			logs.append(_youth_log(team, player))
+			logs.append("%s，青训成本%s" % [_youth_log(team, player), economy_system.format_money(cost)])
 
 func _fill_team_to_minimum_size(
 	team: Team,
 	rng: RandomNumberGenerator,
 	transfer_system: TransferSystem,
+	economy_system: EconomySystem,
 	logs: Array[String],
 	log_team: Team
 ) -> void:
@@ -70,13 +74,15 @@ func _fill_team_to_minimum_size(
 	while team.players.size() < min_size:
 		var player: Player = _create_youth_player(rng, transfer_system)
 		team.add_player(player)
+		var cost: int = economy_system.charge_youth_cost(team)
 		if team == log_team:
-			logs.append("人数不足，补充青训 %s，%d岁，%s，能力%d，潜力%d" % [
+			logs.append("人数不足，补充青训 %s，%d岁，%s，能力%d，潜力%d，青训成本%s" % [
 				player.player_name,
 				player.age,
 				player.position,
 				player.ability,
-				player.potential
+				player.potential,
+				economy_system.format_money(cost)
 			])
 
 func _create_youth_player(rng: RandomNumberGenerator, transfer_system: TransferSystem) -> Player:
@@ -115,7 +121,7 @@ func _create_youth_player(rng: RandomNumberGenerator, transfer_system: TransferS
 	player.is_transfer_listed = false
 	return player
 
-func _youth_log(team: Team, player: Player) -> String:
+func _youth_log(_team: Team, player: Player) -> String:
 	return "青训提拔 %s，%d岁，%s，能力%d，潜力%d" % [
 		player.player_name,
 		player.age,
