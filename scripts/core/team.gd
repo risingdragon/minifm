@@ -4,6 +4,7 @@ extends RefCounted
 var id: int
 var team_name: String
 var money: int = 0
+var financial_status: String = "HEALTHY"
 var season_income: int = 0
 var season_expense: int = 0
 var season_transfer_income: int = 0

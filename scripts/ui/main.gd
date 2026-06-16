@@ -3,10 +3,10 @@ extends Control
 const LeagueScript = preload("res://scripts/core/league.gd")
 const LINEUP_COLUMN_WIDTHS: Array[int] = [56, 150, 56, 56, 72, 72, 100, 90]
 const LINEUP_HEADERS: Array[String] = ["首发", "姓名", "年龄", "位置", "能力", "潜力", "身价", "操作"]
-const LINEUP_SORT_KEYS: Array[String] = ["", "name", "age", "position", "ability", "potential", "value", ""]
+const LINEUP_SORT_KEYS: Array[String] = ["", "name", "age", "position", "ability", "potential", "market_value", ""]
 const LINEUP_TABLE_WIDTH: int = 900
-const MARKET_HEADERS: Array[String] = ["姓名", "年龄", "位置", "能力", "潜力", "身价", "年薪", "球队", "操作"]
-const MARKET_SORT_KEYS: Array[String] = ["name", "age", "position", "ability", "potential", "value", "salary", "team", ""]
+const MARKET_HEADERS: Array[String] = ["姓名", "年龄", "位置", "能力", "潜力", "身价", "周薪", "球队", "操作"]
+const MARKET_SORT_KEYS: Array[String] = ["name", "age", "position", "ability", "potential", "market_value", "weekly_salary", "team", ""]
 
 @onready var round_label: Label = $Root/Header/RoundLabel
 @onready var next_round_button: Button = $Root/Header/NextRoundButton
@@ -50,7 +50,7 @@ const MARKET_SORT_KEYS: Array[String] = ["name", "age", "position", "ability", "
 var league: League
 var lineup_sort_key: String = "position"
 var lineup_sort_ascending: bool = true
-var market_sort_key: String = "value"
+var market_sort_key: String = "market_value"
 var market_sort_ascending: bool = false
 
 func _ready() -> void:
@@ -275,6 +275,7 @@ func _render_finance_view() -> void:
 	finance_warning.visible = not warning.is_empty()
 
 	_add_finance_row("当前资金", league.format_money(team.money))
+	_add_finance_row("财政状态", team.financial_status)
 	_add_finance_row("赛季收入", league.format_money(team.season_income))
 	_add_finance_row("赛季支出", league.format_money(team.season_expense))
 	_add_finance_row("门票收入", league.format_money(team.season_ticket_income))
@@ -362,7 +363,7 @@ func _build_lineup_view() -> void:
 		row.add_child(_lineup_label(player.position, LINEUP_COLUMN_WIDTHS[3]))
 		row.add_child(_lineup_label(str(player.ability), LINEUP_COLUMN_WIDTHS[4]))
 		row.add_child(_lineup_label(str(player.potential), LINEUP_COLUMN_WIDTHS[5]))
-		row.add_child(_lineup_label(league.format_money(player.value), LINEUP_COLUMN_WIDTHS[6]))
+		row.add_child(_lineup_label(league.format_money(player.market_value), LINEUP_COLUMN_WIDTHS[6]))
 
 		var list_button: Button = Button.new()
 		list_button.custom_minimum_size = Vector2(LINEUP_COLUMN_WIDTHS[7], 28)
@@ -415,8 +416,8 @@ func _compare_lineup_players(a: Player, b: Player) -> int:
 			return a.ability - b.ability
 		"potential":
 			return a.potential - b.potential
-		"value":
-			return a.value - b.value
+		"market_value":
+			return a.market_value - b.market_value
 		_:
 			return a.id - b.id
 
@@ -558,8 +559,8 @@ func _add_market_row(player: Player, owner: Team) -> void:
 		player.position,
 		str(player.ability),
 		str(player.potential),
-		league.format_money(player.value),
-		league.format_money(player.salary),
+		league.format_money(player.market_value),
+		league.format_money(player.weekly_salary),
 		owner.team_name
 	]
 
@@ -618,10 +619,10 @@ func _compare_market_entries(a: Dictionary, b: Dictionary) -> int:
 			return a_player.ability - b_player.ability
 		"potential":
 			return a_player.potential - b_player.potential
-		"value":
-			return a_player.value - b_player.value
-		"salary":
-			return a_player.salary - b_player.salary
+		"market_value":
+			return a_player.market_value - b_player.market_value
+		"weekly_salary":
+			return a_player.weekly_salary - b_player.weekly_salary
 		"team":
 			return a_team.team_name.naturalnocasecmp_to(b_team.team_name)
 		_:

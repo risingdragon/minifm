@@ -6,44 +6,42 @@ const CONFIG_PATH: String = "res://config/transfer_config.json"
 var config: Dictionary = {}
 var logs: Array[Dictionary] = []
 var lineup_warning: String = ""
-var low_cash_threshold: int = 2000000
+var low_cash_threshold: int = 200
 var low_cash_list_score: int = 20
+var crisis_cash_threshold: int = 0
+var crisis_cash_list_score: int = 50
 
 func _init() -> void:
 	_load_config()
 
 func initial_money() -> int:
-	return int(config.get("initial_money", 50000000))
+	return int(config.get("initial_money", 200000))
 
 func clear_logs() -> void:
 	logs.clear()
 
-func setup_player_finance(player: Player, rng: RandomNumberGenerator) -> void:
-	player.value = calculate_value(player)
-	player.salary = calculate_salary(player)
+func setup_player_finance(player: Player, rng: RandomNumberGenerator, economy_system: EconomySystem) -> void:
+	player.market_value = calculate_market_value(player)
+	player.weekly_salary = economy_system.generate_weekly_salary(player.ability, rng)
 	player.contract_years = rng.randi_range(1, 5)
 	player.is_transfer_listed = false
 
 func refresh_player_finance(teams: Array[Team]) -> void:
 	for team in teams:
 		for player in team.players:
-			player.value = calculate_value(player)
-			player.salary = calculate_salary(player)
+			player.market_value = calculate_market_value(player)
 
-func calculate_value(player: Player) -> int:
-	var value: float = float(player.ability * int(config.get("value_ability_multiplier", 10000)))
-	value += float(player.potential * int(config.get("value_potential_multiplier", 5000)))
+func calculate_market_value(player: Player) -> int:
+	var market_value: float = float(player.ability) * float(config.get("value_ability_multiplier", 1.0))
+	market_value += float(player.potential) * float(config.get("value_potential_multiplier", 0.5))
 
 	if player.age <= int(config.get("young_age_bonus_max_age", 24)):
-		value *= float(config.get("young_age_bonus_multiplier", 1.3))
+		market_value *= float(config.get("young_age_bonus_multiplier", 1.3))
 
 	if player.age >= int(config.get("old_age_discount_min_age", 32)):
-		value *= float(config.get("old_age_discount_multiplier", 0.6))
+		market_value *= float(config.get("old_age_discount_multiplier", 0.6))
 
-	return int(round(value))
-
-func calculate_salary(player: Player) -> int:
-	return player.ability * int(config.get("salary_ability_multiplier", 1000))
+	return maxi(1, int(round(market_value)))
 
 func listed_players(teams: Array[Team]) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
@@ -66,7 +64,7 @@ func toggle_player_listing(team: Team, player: Player, highlight_log: bool = fal
 		return "球队人数不足，无法挂牌"
 
 	player.is_transfer_listed = true
-	_add_log("%s 挂牌 %s（身价%s）" % [team.team_name, player.player_name, format_money(player.value)], highlight_log)
+	_add_log("%s 挂牌 %s（身价%s）" % [team.team_name, player.player_name, format_money(player.market_value)], highlight_log)
 	return "已挂牌"
 
 func buy_player(buyer: Team, seller: Team, player: Player, highlight_log: bool = false) -> String:
@@ -79,15 +77,17 @@ func buy_player(buyer: Team, seller: Team, player: Player, highlight_log: bool =
 	if seller.players.size() <= 11:
 		return "卖方球队人数不足，无法出售"
 
-	if buyer.money < player.value:
+	if buyer.money < player.market_value:
 		return "资金不足"
 
-	buyer.money -= player.value
-	seller.money += player.value
-	buyer.season_transfer_expense += player.value
-	buyer.season_expense += player.value
-	seller.season_transfer_income += player.value
-	seller.season_income += player.value
+	buyer.money -= player.market_value
+	seller.money += player.market_value
+	_update_financial_status(buyer)
+	_update_financial_status(seller)
+	buyer.season_transfer_expense += player.market_value
+	buyer.season_expense += player.market_value
+	seller.season_transfer_income += player.market_value
+	seller.season_income += player.market_value
 	seller.remove_player(player)
 	buyer.add_player(player)
 	player.is_transfer_listed = false
@@ -96,7 +96,7 @@ func buy_player(buyer: Team, seller: Team, player: Player, highlight_log: bool =
 		buyer.team_name,
 		seller.team_name,
 		player.player_name,
-		format_money(player.value)
+		format_money(player.market_value)
 	], highlight_log)
 	return "转会成功"
 
@@ -106,9 +106,7 @@ func process_ai_transfers(teams: Array[Team], player_team: Team) -> void:
 	_process_ai_buying(teams, player_team)
 
 func format_money(amount: int) -> String:
-	if amount >= 10000:
-		return "%d万" % int(round(float(amount) / 10000.0))
-	return "%d" % amount
+	return "%d万" % amount
 
 func _process_ai_listing(teams: Array[Team], player_team: Team) -> void:
 	var max_per_team: int = int(config.get("ai_list_max_per_team_per_round", 1))
@@ -132,7 +130,7 @@ func _process_ai_listing(teams: Array[Team], player_team: Team) -> void:
 
 		if best_player != null and best_score >= threshold and listed_count < max_per_team:
 			best_player.is_transfer_listed = true
-			_add_log("%s 挂牌 %s（身价%s）" % [team.team_name, best_player.player_name, format_money(best_player.value)], false)
+			_add_log("%s 挂牌 %s（身价%s）" % [team.team_name, best_player.player_name, format_money(best_player.market_value)], false)
 			listed_count += 1
 
 func _process_ai_buying(teams: Array[Team], player_team: Team) -> void:
@@ -148,7 +146,7 @@ func _process_ai_buying(teams: Array[Team], player_team: Team) -> void:
 			if seller == buyer:
 				continue
 			for player in seller.players:
-				if not player.is_transfer_listed or buyer.money < player.value:
+				if not player.is_transfer_listed or buyer.money < player.market_value:
 					continue
 				if seller.players.size() <= 11:
 					continue
@@ -167,9 +165,19 @@ func _process_ai_buying(teams: Array[Team], player_team: Team) -> void:
 func _add_log(text: String, highlight: bool = false) -> void:
 	logs.append({"text": text, "highlight": highlight})
 
+func _update_financial_status(team: Team) -> void:
+	if team.money < 0:
+		team.financial_status = "CRISIS"
+	elif team.money <= 1000:
+		team.financial_status = "WARNING"
+	else:
+		team.financial_status = "HEALTHY"
+
 func _listing_score(team: Team, player: Player) -> int:
 	var score: int = 0
-	if team.money < low_cash_threshold:
+	if team.money < crisis_cash_threshold:
+		score += crisis_cash_list_score
+	elif team.money < low_cash_threshold:
 		score += low_cash_list_score
 	if player.age >= int(config.get("ai_list_old_age", 32)):
 		score += int(config.get("ai_list_old_age_score", 30))
@@ -179,8 +187,10 @@ func _listing_score(team: Team, player: Player) -> int:
 		score += int(config.get("ai_list_low_position_ability_score", 20))
 	if player.potential <= player.ability + 5:
 		score += int(config.get("ai_list_low_potential_score", 15))
-	if player.salary > _average_salary(team):
-		score += int(config.get("ai_list_high_salary_score", 10))
+	if player.weekly_salary > _average_weekly_salary(team):
+		score += int(config.get("ai_list_high_weekly_salary_score", 10))
+	if team.money < low_cash_threshold:
+		score += int(round(float(player.weekly_salary) * float(config.get("ai_list_weekly_salary_pressure_multiplier", 0.2))))
 	if _position_count(team, player.position) > _expected_position_count(player.position):
 		score += int(config.get("ai_list_surplus_position_score", 15))
 	if team.is_player_starting(player):
@@ -198,12 +208,12 @@ func _position_average_ability(team: Team, position: String) -> float:
 		return 0.0
 	return total / count
 
-func _average_salary(team: Team) -> float:
+func _average_weekly_salary(team: Team) -> float:
 	if team.players.is_empty():
 		return 0.0
 	var total: float = 0.0
 	for player in team.players:
-		total += player.salary
+		total += player.weekly_salary
 	return total / team.players.size()
 
 func _position_count(team: Team, position: String) -> int:
@@ -241,14 +251,13 @@ func _load_config() -> void:
 
 func _default_config() -> Dictionary:
 	return {
-		"initial_money": 50000000,
-		"value_ability_multiplier": 10000,
-		"value_potential_multiplier": 5000,
+		"initial_money": 200000,
+		"value_ability_multiplier": 1.0,
+		"value_potential_multiplier": 0.5,
 		"young_age_bonus_max_age": 24,
 		"young_age_bonus_multiplier": 1.3,
 		"old_age_discount_min_age": 32,
 		"old_age_discount_multiplier": 0.6,
-		"salary_ability_multiplier": 1000,
 		"ai_list_max_per_team_per_round": 1,
 		"ai_list_min_team_size": 14,
 		"ai_list_score_threshold": 40,
@@ -258,7 +267,8 @@ func _default_config() -> Dictionary:
 		"ai_list_very_old_age_extra_score": 20,
 		"ai_list_low_position_ability_score": 20,
 		"ai_list_low_potential_score": 15,
-		"ai_list_high_salary_score": 10,
+		"ai_list_high_weekly_salary_score": 10,
+		"ai_list_weekly_salary_pressure_multiplier": 0.2,
 		"ai_list_surplus_position_score": 15,
 		"ai_list_starter_penalty": 50
 	}

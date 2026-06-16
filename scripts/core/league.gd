@@ -55,7 +55,7 @@ func setup_default_league() -> void:
 
 		for player_index in range(18):
 			var player: Player = _create_player(next_player_id, team_index, player_index)
-			transfer_system.setup_player_finance(player, rng)
+			transfer_system.setup_player_finance(player, rng, economy_system)
 			team.add_player(player)
 			next_player_id += 1
 
@@ -91,6 +91,8 @@ func play_next_round() -> Array[Dictionary]:
 	transfer_system.refresh_player_finance(teams)
 	transfer_system.low_cash_threshold = economy_system.ai_low_cash_threshold()
 	transfer_system.low_cash_list_score = economy_system.ai_low_cash_list_score()
+	transfer_system.crisis_cash_threshold = economy_system.ai_crisis_cash_threshold()
+	transfer_system.crisis_cash_list_score = economy_system.ai_crisis_cash_list_score()
 	transfer_system.clear_logs()
 	transfer_system.process_ai_transfers(teams, player_team)
 	_sync_transfer_logs()

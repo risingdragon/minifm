@@ -56,7 +56,7 @@ func _generate_base_youth_players(
 ) -> void:
 	var count: int = int(config.get("youth_players_per_team_per_season", 2))
 	for _index in range(count):
-		var player: Player = _create_youth_player(rng, transfer_system)
+		var player: Player = _create_youth_player(rng, transfer_system, economy_system)
 		team.add_player(player)
 		var cost: int = economy_system.charge_youth_cost(team)
 		if team == log_team:
@@ -72,7 +72,7 @@ func _fill_team_to_minimum_size(
 ) -> void:
 	var min_size: int = int(config.get("min_team_size_after_season", 18))
 	while team.players.size() < min_size:
-		var player: Player = _create_youth_player(rng, transfer_system)
+		var player: Player = _create_youth_player(rng, transfer_system, economy_system)
 		team.add_player(player)
 		var cost: int = economy_system.charge_youth_cost(team)
 		if team == log_team:
@@ -85,7 +85,7 @@ func _fill_team_to_minimum_size(
 				economy_system.format_money(cost)
 			])
 
-func _create_youth_player(rng: RandomNumberGenerator, transfer_system: TransferSystem) -> Player:
+func _create_youth_player(rng: RandomNumberGenerator, transfer_system: TransferSystem, economy_system: EconomySystem) -> Player:
 	var positions_value: Variant = config.get("positions", ["GK", "DF", "MF", "FW"])
 	var positions: Array = ["GK", "DF", "MF", "FW"]
 	if positions_value is Array:
@@ -116,7 +116,7 @@ func _create_youth_player(rng: RandomNumberGenerator, transfer_system: TransferS
 		ability
 	)
 	next_player_id += 1
-	transfer_system.setup_player_finance(player, rng)
+	transfer_system.setup_player_finance(player, rng, economy_system)
 	player.contract_years = int(config.get("youth_contract_years", 3))
 	player.is_transfer_listed = false
 	return player
