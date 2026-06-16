@@ -10,6 +10,10 @@
   "ai_low_cash_list_score": 20,
   "ai_crisis_cash_threshold": 0,
   "ai_crisis_cash_list_score": 50,
+  "tier_income_multiplier": {
+    "1": 1.0,
+    "2": 0.6
+  },
   "weekly_salary_random_min": 0.8,
   "weekly_salary_random_max": 1.2,
   "weekly_salary_brackets": [

@@ -10,6 +10,7 @@ var low_cash_threshold: int = 200
 var low_cash_list_score: int = 20
 var crisis_cash_threshold: int = 0
 var crisis_cash_list_score: int = 50
+var preferred_ability_ranges: Dictionary = {}
 
 func _init() -> void:
 	_load_config()
@@ -151,6 +152,7 @@ func _process_ai_buying(teams: Array[Team], player_team: Team) -> void:
 				if seller.players.size() <= 11:
 					continue
 				var score: int = player.ability * 2 + player.potential - player.age
+				score += _tier_buy_score_adjustment(buyer, player)
 				if score > best_score:
 					best_score = score
 					best_player = player
@@ -164,6 +166,19 @@ func _process_ai_buying(teams: Array[Team], player_team: Team) -> void:
 
 func _add_log(text: String, highlight: bool = false) -> void:
 	logs.append({"text": text, "highlight": highlight})
+
+func _tier_buy_score_adjustment(team: Team, player: Player) -> int:
+	var range_value: Variant = preferred_ability_ranges.get(str(team.league_level), {})
+	if not (range_value is Dictionary):
+		return 0
+	var ability_range: Dictionary = range_value as Dictionary
+	var min_ability: int = int(ability_range.get("min", 1))
+	var max_ability: int = int(ability_range.get("max", 200))
+	if player.ability >= min_ability and player.ability <= max_ability:
+		return 60
+	if player.ability > max_ability:
+		return -30
+	return -60
 
 func _update_financial_status(team: Team) -> void:
 	if team.money < 0:

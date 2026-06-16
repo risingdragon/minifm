@@ -41,6 +41,7 @@ const MARKET_SORT_KEYS: Array[String] = ["name", "age", "position", "ability", "
 @onready var season_summary_title: Label = $Root/SeasonSummaryPanel/SeasonSummaryTitle
 @onready var season_summary_list: VBoxContainer = $Root/SeasonSummaryPanel/SeasonSummaryScroll/SeasonSummaryList
 @onready var standings_view: HSplitContainer = $Root/MainColumns
+@onready var tier_selector: OptionButton = $Root/MainColumns/LeftPanel/TierSelector
 @onready var standings_title: Label = $Root/MainColumns/LeftPanel/StandingsTitle
 @onready var standings_header: GridContainer = $Root/MainColumns/LeftPanel/StandingsHeader
 @onready var standings_list: VBoxContainer = $Root/MainColumns/LeftPanel/StandingsList
@@ -65,8 +66,10 @@ func _ready() -> void:
 	finance_view_button.pressed.connect(_show_finance_view)
 	season_summary_view_button.pressed.connect(_show_season_summary_view)
 	recommend_lineup_button.pressed.connect(_on_recommend_lineup_pressed)
+	tier_selector.item_selected.connect(_on_tier_selected)
 
 	_build_lineup_view()
+	_build_tier_selector()
 	_build_standings_header()
 	_build_market_header()
 	_render_result_messages(["点击“继续”开始第一轮比赛。"])
@@ -83,6 +86,7 @@ func _on_next_round_pressed() -> void:
 
 	if league.is_season_complete():
 		league.start_next_season()
+		_build_tier_selector()
 		_build_lineup_view()
 		_render_transfer_view()
 		_render_result_messages(["新赛季开始，点击“继续”进行第一轮比赛。"])
@@ -116,7 +120,8 @@ func _on_next_round_pressed() -> void:
 	_refresh()
 
 func _refresh() -> void:
-	standings_title.text = "%d赛季积分榜" % league.season_year
+	_sync_tier_selector_selection()
+	standings_title.text = "%d赛季%s积分榜" % [league.season_year, league.active_tier_name()]
 	round_label.text = "%d/%d轮" % [min(league.current_round + 1, league.total_rounds()), league.total_rounds()]
 	if league.current_round == 0:
 		results_title.text = "第 1 轮赛果"
@@ -137,6 +142,23 @@ func _refresh() -> void:
 	_refresh_money_label()
 	_render_finance_view()
 	_render_transfer_logs()
+
+func _build_tier_selector() -> void:
+	tier_selector.clear()
+	for tier in league.tiers:
+		tier_selector.add_item(tier.tier_name, tier.level)
+		if tier.level == league.active_standings_level:
+			tier_selector.select(tier_selector.get_item_count() - 1)
+
+func _on_tier_selected(index: int) -> void:
+	league.set_active_standings_level(tier_selector.get_item_id(index))
+	_refresh()
+
+func _sync_tier_selector_selection() -> void:
+	for index in range(tier_selector.get_item_count()):
+		if tier_selector.get_item_id(index) == league.active_standings_level:
+			tier_selector.select(index)
+			return
 
 func _show_standings_view() -> void:
 	standings_view.visible = true
@@ -276,6 +298,9 @@ func _render_finance_view() -> void:
 
 	_add_finance_row("当前资金", league.format_money(team.money))
 	_add_finance_row("财政状态", team.financial_status)
+	_add_finance_row("当前联赛", league.player_tier_name())
+	_add_finance_row("联赛等级", str(team.league_level))
+	_add_finance_row("预计下赛季收入等级", league.expected_next_season_income_label())
 	_add_finance_row("赛季收入", league.format_money(team.season_income))
 	_add_finance_row("赛季支出", league.format_money(team.season_expense))
 	_add_finance_row("门票收入", league.format_money(team.season_ticket_income))

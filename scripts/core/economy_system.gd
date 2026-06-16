@@ -15,10 +15,10 @@ func settle_match(result: Dictionary) -> Array[String]:
 	var home_goals: int = int(result["home_goals"])
 	var away_goals: int = int(result["away_goals"])
 
-	_add_ticket_income(home, int(config.get("home_ticket_income", 50)), logs)
-	_add_ticket_income(away, int(config.get("away_ticket_income", 20)), logs)
-	_add_match_bonus(home, _bonus_for_result(home_goals, away_goals), logs)
-	_add_match_bonus(away, _bonus_for_result(away_goals, home_goals), logs)
+	_add_ticket_income(home, _tier_amount(int(config.get("home_ticket_income", 50)), home.league_level), logs)
+	_add_ticket_income(away, _tier_amount(int(config.get("away_ticket_income", 20)), away.league_level), logs)
+	_add_match_bonus(home, _tier_amount(_bonus_for_result(home_goals, away_goals), home.league_level), logs)
+	_add_match_bonus(away, _tier_amount(_bonus_for_result(away_goals, home_goals), away.league_level), logs)
 	_pay_match_salary(home, logs)
 	_pay_match_salary(away, logs)
 
@@ -35,7 +35,7 @@ func settle_ranking_bonus(sorted_teams: Array[Team]) -> Array[String]:
 	for index in range(sorted_teams.size()):
 		var rank: int = index + 1
 		var team: Team = sorted_teams[index]
-		var bonus: int = int(ranking_bonus.get(str(rank), 0))
+		var bonus: int = _tier_amount(int(ranking_bonus.get(str(rank), 0)), team.league_level)
 		if bonus <= 0:
 			continue
 		team.money += bonus
@@ -105,6 +105,9 @@ func update_financial_status(team: Team) -> void:
 	else:
 		team.financial_status = "HEALTHY"
 
+func tier_income_multiplier(league_level: int) -> float:
+	return _tier_income_multiplier(league_level)
+
 func format_money(amount: int) -> String:
 	var sign: String = ""
 	var value: int = amount
@@ -150,6 +153,16 @@ func _ranking_bonus_config() -> Dictionary:
 		return value as Dictionary
 	return {}
 
+func _tier_amount(amount: int, league_level: int) -> int:
+	return int(round(float(amount) * _tier_income_multiplier(league_level)))
+
+func _tier_income_multiplier(league_level: int) -> float:
+	var value: Variant = config.get("tier_income_multiplier", {})
+	if value is Dictionary:
+		var multipliers: Dictionary = value as Dictionary
+		return float(multipliers.get(str(league_level), 1.0))
+	return 1.0
+
 func _weekly_salary_bracket(ability: int) -> Dictionary:
 	var brackets_value: Variant = config.get("weekly_salary_brackets", [])
 	if brackets_value is Array:
@@ -190,14 +203,18 @@ func _default_config() -> Dictionary:
 		"ai_low_cash_list_score": 20,
 		"ai_crisis_cash_threshold": 0,
 		"ai_crisis_cash_list_score": 50,
+		"tier_income_multiplier": {
+			"1": 1.0,
+			"2": 0.6
+		},
 		"weekly_salary_random_min": 0.8,
 		"weekly_salary_random_max": 1.2,
 		"weekly_salary_brackets": [
-			{"min_ability": 1, "max_ability": 49, "min_salary": 1, "max_salary": 3},
-			{"min_ability": 50, "max_ability": 79, "min_salary": 3, "max_salary": 10},
-			{"min_ability": 80, "max_ability": 119, "min_salary": 10, "max_salary": 30},
-			{"min_ability": 120, "max_ability": 159, "min_salary": 30, "max_salary": 80},
-			{"min_ability": 160, "max_ability": 200, "min_salary": 80, "max_salary": 200}
+			{"min_ability": 1, "max_ability": 49, "min_salary": 1, "max_salary": 1},
+			{"min_ability": 50, "max_ability": 79, "min_salary": 1, "max_salary": 2},
+			{"min_ability": 80, "max_ability": 119, "min_salary": 2, "max_salary": 4},
+			{"min_ability": 120, "max_ability": 159, "min_salary": 3, "max_salary": 6},
+			{"min_ability": 160, "max_ability": 200, "min_salary": 6, "max_salary": 10}
 		],
 		"ranking_bonus": {
 			"1": 1000,

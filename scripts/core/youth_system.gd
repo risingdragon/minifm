@@ -5,6 +5,7 @@ const CONFIG_PATH: String = "res://config/youth_config.json"
 
 var config: Dictionary = {}
 var next_player_id: int = 1
+var tier_youth_ability_bonus: Dictionary = {}
 
 func _init() -> void:
 	_load_config()
@@ -56,7 +57,7 @@ func _generate_base_youth_players(
 ) -> void:
 	var count: int = int(config.get("youth_players_per_team_per_season", 2))
 	for _index in range(count):
-		var player: Player = _create_youth_player(rng, transfer_system, economy_system)
+		var player: Player = _create_youth_player(team, rng, transfer_system, economy_system)
 		team.add_player(player)
 		var cost: int = economy_system.charge_youth_cost(team)
 		if team == log_team:
@@ -72,7 +73,7 @@ func _fill_team_to_minimum_size(
 ) -> void:
 	var min_size: int = int(config.get("min_team_size_after_season", 18))
 	while team.players.size() < min_size:
-		var player: Player = _create_youth_player(rng, transfer_system, economy_system)
+		var player: Player = _create_youth_player(team, rng, transfer_system, economy_system)
 		team.add_player(player)
 		var cost: int = economy_system.charge_youth_cost(team)
 		if team == log_team:
@@ -85,7 +86,7 @@ func _fill_team_to_minimum_size(
 				economy_system.format_money(cost)
 			])
 
-func _create_youth_player(rng: RandomNumberGenerator, transfer_system: TransferSystem, economy_system: EconomySystem) -> Player:
+func _create_youth_player(team: Team, rng: RandomNumberGenerator, transfer_system: TransferSystem, economy_system: EconomySystem) -> Player:
 	var positions_value: Variant = config.get("positions", ["GK", "DF", "MF", "FW"])
 	var positions: Array = ["GK", "DF", "MF", "FW"]
 	if positions_value is Array:
@@ -101,6 +102,9 @@ func _create_youth_player(rng: RandomNumberGenerator, transfer_system: TransferS
 	var age: int = rng.randi_range(age_min, age_max)
 	var ability: int = rng.randi_range(ability_min, ability_max)
 	var potential: int = rng.randi_range(ability, maxi(ability, potential_max))
+	var tier_bonus: int = int(tier_youth_ability_bonus.get(str(team.league_level), 0))
+	ability = clampi(ability + tier_bonus, 1, 200)
+	potential = clampi(maxi(potential, ability), ability, 200)
 	var player_name: String = _random_name(rng)
 
 	var player: Player = Player.new(

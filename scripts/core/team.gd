@@ -3,6 +3,8 @@ extends RefCounted
 
 var id: int
 var team_name: String
+var league_level: int = 1
+var league_history: Array[String] = []
 var money: int = 0
 var financial_status: String = "HEALTHY"
 var season_income: int = 0
