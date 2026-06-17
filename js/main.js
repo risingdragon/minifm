@@ -105,7 +105,7 @@ class Team {
             goalsAgainst: 0,
             points: 0
         };
-        
+
         // === 懒加载状态 ===
         this.isPlayersLoaded = data.isPlayersLoaded !== undefined ? data.isPlayersLoaded : true;
         this.playersData = data.playersData || null;
@@ -122,10 +122,10 @@ class Team {
 
     getTeamAbility() {
         if (this.players.length === 0) return 0;
-        const lineupPlayers = this.startingLineup.map(id => 
+        const lineupPlayers = this.startingLineup.map(id =>
             this.players.find(p => p.id === id)
         ).filter(p => p);
-        
+
         if (lineupPlayers.length === 0) return 0;
         return Math.floor(lineupPlayers.reduce((sum, p) => sum + p.ability, 0) / lineupPlayers.length);
     }
@@ -133,7 +133,7 @@ class Team {
     setDefaultLineup() {
         this.startingLineup = [];
         const positions = ['GK', 'DEF', 'MID', 'FWD'];
-        
+
         for (const pos of positions) {
             const count = CONFIG.STARTING_LINEUP[pos];
             const posPlayers = this.players.filter(p => p.position === pos);
@@ -142,11 +142,11 @@ class Team {
             }
         }
     }
-    
+
     // 按需加载球员数据（懒加载）
     loadPlayers() {
         if (this.isPlayersLoaded) return;
-        
+
         // 如果有缓存数据，从缓存恢复
         if (this.playersData) {
             this.players = this.playersData.map(p => new Player(p));
@@ -155,7 +155,7 @@ class Team {
             // 生成新的球员数据
             this.players = DataGenerator.generateTeamPlayers(this.leagueLevel);
         }
-        
+
         this.setDefaultLineup();
         this.isPlayersLoaded = true;
     }
@@ -200,7 +200,7 @@ class League {
         this.currentRound = data.currentRound || 1;
         this.season = data.season || 1;
         this.standings = data.standings || [];
-        
+
         // === 懒加载状态 ===
         this.isTeamsLoaded = data.isTeamsLoaded !== undefined ? data.isTeamsLoaded : true;
         this.teamsData = data.teamsData || null;
@@ -221,15 +221,15 @@ class League {
         // 使用循环赛算法生成赛程
         // 创建球队索引数组
         let teamIndices = Array.from({ length: teamCount }, (_, i) => i);
-        
+
         // 第一循环（主场）
         for (let round = 0; round < teamCount - 1; round++) {
             const roundMatches = [];
-            
+
             for (let match = 0; match < matchesPerRound; match++) {
                 const home = teamIndices[match];
                 const away = teamIndices[teamCount - 1 - match];
-                
+
                 roundMatches.push({
                     homeTeam: this.teams[home].id,
                     awayTeam: this.teams[away].id,
@@ -238,12 +238,12 @@ class League {
                     played: false
                 });
             }
-            
+
             this.schedule.push({
                 round: round + 1,
                 matches: roundMatches
             });
-            
+
             // 轮转球队位置（保持第一个位置不变）
             teamIndices = [teamIndices[0], ...teamIndices.slice(2), teamIndices[1]];
         }
@@ -252,7 +252,7 @@ class League {
         for (let round = 0; round < teamCount - 1; round++) {
             const roundMatches = [];
             const firstHalfRound = this.schedule[round].matches;
-            
+
             for (const match of firstHalfRound) {
                 roundMatches.push({
                     homeTeam: match.awayTeam,
@@ -262,7 +262,7 @@ class League {
                     played: false
                 });
             }
-            
+
             this.schedule.push({
                 round: teamCount + round,
                 matches: roundMatches
@@ -291,7 +291,7 @@ class League {
     updateStandings(match) {
         const homeStanding = this.standings.find(s => s.teamId === match.homeTeam);
         const awayStanding = this.standings.find(s => s.teamId === match.awayTeam);
-        
+
         if (!homeStanding || !awayStanding) return;
 
         homeStanding.played++;
@@ -327,17 +327,17 @@ class League {
             return b.goalsFor - a.goalsFor;
         });
     }
-    
+
     // 按需加载球队数据（懒加载）
     loadTeams() {
         if (this.isTeamsLoaded) return;
-        
+
         // 如果有缓存数据，从缓存恢复
         if (this.teamsData) {
             this.teams = this.teamsData.map(t => new Team(t));
             this.teamsData = null;
         }
-        
+
         this.isTeamsLoaded = true;
     }
 
@@ -354,12 +354,12 @@ class League {
         if (!this.isTeamsLoaded) {
             this.loadTeams();
         }
-        
+
         // 加载赛程
         if (this.schedule.length === 0) {
             this.generateSchedule();
         }
-        
+
         // 确保所有球队球员已加载
         for (const team of this.teams) {
             team.generatePlayersIfNeeded();
@@ -378,9 +378,9 @@ class League {
 
     // 检查联赛是否完全加载（球队+赛程）
     isFullyLoaded() {
-        return this.isTeamsLoaded && 
-               this.schedule && 
-               this.schedule.length > 0;
+        return this.isTeamsLoaded &&
+            this.schedule &&
+            this.schedule.length > 0;
     }
 
     // 将联赛转为懒加载降级状态（保留基本数据，清理内存）
@@ -399,13 +399,13 @@ class League {
                 }
                 return t.toJSON();
             });
-            
+
             // 清空 teams，释放内存
             this.teams = [];
-            
+
             // 保留 standings（积分榜数据），清空 schedule
             this.schedule = [];
-            
+
             // 更新加载状态
             this.isTeamsLoaded = false;
         }
@@ -445,18 +445,18 @@ let gameState = {
 // ========================================
 const DataGenerator = {
     // 姓名库
-    firstNames: ['张', '李', '王', '刘', '陈', '杨', '赵', '黄', '周', '吴', 
-                 '徐', '孙', '胡', '朱', '高', '林', '何', '郭', '马', '罗',
-                 '梁', '宋', '郑', '谢', '韩', '唐', '冯', '于', '董', '萧',
-                 '程', '曹', '袁', '邓', '许', '傅', '沈', '曾', '彭', '吕'],
+    firstNames: ['张', '李', '王', '刘', '陈', '杨', '赵', '黄', '周', '吴',
+        '徐', '孙', '胡', '朱', '高', '林', '何', '郭', '马', '罗',
+        '梁', '宋', '郑', '谢', '韩', '唐', '冯', '于', '董', '萧',
+        '程', '曹', '袁', '邓', '许', '傅', '沈', '曾', '彭', '吕'],
     lastNames: ['伟', '强', '磊', '军', '勇', '杰', '涛', '明', '辉', '鹏',
-                '华', '飞', '宇', '龙', '斌', '刚', '平', '建', '志', '文',
-                '俊', '浩', '天', '阳', '凯', '峰', '毅', '博', '昊', '然',
-                '旭', '晨', '睿', '霖', '航', '宁', '远', '翔', '川', '林'],
+        '华', '飞', '宇', '龙', '斌', '刚', '平', '建', '志', '文',
+        '俊', '浩', '天', '阳', '凯', '峰', '毅', '博', '昊', '然',
+        '旭', '晨', '睿', '霖', '航', '宁', '远', '翔', '川', '林'],
 
     // 城市名库（用于球队命名）
     cityNames: [
-        '北京', '上海', '广州', '深圳', '杭州', '南京', '成都', '武汉', 
+        '北京', '上海', '广州', '深圳', '杭州', '南京', '成都', '武汉',
         '西安', '重庆', '天津', '苏州', '青岛', '大连', '厦门', '长沙',
         '郑州', '济南', '福州', '昆明', '南昌', '南宁', '合肥', '石家庄',
         '太原', '沈阳', '长春', '哈尔滨', '贵阳', '兰州', '乌鲁木齐', '海口',
@@ -489,7 +489,7 @@ const DataGenerator = {
         const minAbility = 50 + (6 - leagueLevel) * 10;
         const maxAbility = 100 + (6 - leagueLevel) * 16;
         const ability = minAbility + Math.floor(Math.random() * (maxAbility - minAbility));
-        
+
         // 年龄分布：更倾向于年轻球员
         const ageRand = Math.random();
         let age;
@@ -509,42 +509,42 @@ const DataGenerator = {
             ability: ability,
             age: age
         });
-        
+
         // 根据能力值和年龄重新计算身价
         player.value = player.calculateValue();
         player.wage = player.calculateWage();
-        
+
         return player;
     },
-    
+
     // 生成球队所有球员（用于懒加载）
     generateTeamPlayers(leagueLevel) {
         const players = [];
-        
+
         // 生成门将（2-3人）
         const gkCount = 2 + Math.floor(Math.random() * 2);
         for (let i = 0; i < gkCount; i++) {
             players.push(this.generatePlayer('GK', leagueLevel));
         }
-        
+
         // 生成后卫（5-7人）
         const defCount = 5 + Math.floor(Math.random() * 3);
         for (let i = 0; i < defCount; i++) {
             players.push(this.generatePlayer('DEF', leagueLevel));
         }
-        
+
         // 生成中场（5-7人）
         const midCount = 5 + Math.floor(Math.random() * 3);
         for (let i = 0; i < midCount; i++) {
             players.push(this.generatePlayer('MID', leagueLevel));
         }
-        
+
         // 生成前锋（3-5人）
         const fwdCount = 3 + Math.floor(Math.random() * 3);
         for (let i = 0; i < fwdCount; i++) {
             players.push(this.generatePlayer('FWD', leagueLevel));
         }
-        
+
         return players;
     },
 
@@ -592,13 +592,13 @@ const DataGenerator = {
     // 为联赛生成球队（完整模式，包含球员和阵容）
     generateTeamsForLeague(level) {
         const teams = [];
-        
+
         for (let i = 0; i < CONFIG.TEAMS_PER_LEAGUE; i++) {
             const teamName = `球队${(level - 1) * CONFIG.TEAMS_PER_LEAGUE + i + 1}`;
             const team = this.generateTeam(teamName, level, false);
             teams.push(team);
         }
-        
+
         return teams;
     },
 
@@ -612,14 +612,14 @@ const DataGenerator = {
     generateAllLeagues() {
         const leagues = [];
         const teamNames = this.generateAllTeamNames();
-        
+
         let teamIndex = 0;
         for (let level = 1; level <= CONFIG.LEAGUE_LEVELS; level++) {
-            
+
             if (level === CONFIG.LEAGUE_LEVELS) {
                 // 第6级联赛（玩家所在联赛）- 完整生成
                 const teams = [];
-                
+
                 for (let i = 0; i < CONFIG.TEAMS_PER_LEAGUE; i++) {
                     const teamName = teamNames[teamIndex++];
                     const isPlayerTeam = (i === 0);
@@ -634,15 +634,15 @@ const DataGenerator = {
                     season: 1,
                     isTeamsLoaded: true
                 });
-                
+
                 league.generateSchedule();
                 league.initStandings();
-                
+
                 leagues.push(league);
             } else {
                 // 其他联赛 - 懒加载模式（只含基本信息，不生成球员）
                 const teamsData = [];
-                
+
                 for (let i = 0; i < CONFIG.TEAMS_PER_LEAGUE; i++) {
                     const teamName = teamNames[teamIndex++];
                     const teamData = {
@@ -686,7 +686,7 @@ const DataGenerator = {
                         points: 0
                     }))
                 });
-                
+
                 leagues.push(league);
             }
         }
@@ -702,11 +702,11 @@ const DataGenerator = {
             // 懒加载模式：只含球队基本信息
             const teamsData = [];
             const standingsData = [];
-            
+
             for (let i = 0; i < CONFIG.TEAMS_PER_LEAGUE; i++) {
                 const teamId = 'team_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
                 const teamName = `球队${(level - 1) * CONFIG.TEAMS_PER_LEAGUE + i + 1}`;
-                
+
                 teamsData.push({
                     id: teamId,
                     name: teamName,
@@ -724,7 +724,7 @@ const DataGenerator = {
                         points: 0
                     }
                 });
-                
+
                 standingsData.push({
                     teamId: teamId,
                     teamName: teamName,
@@ -739,7 +739,7 @@ const DataGenerator = {
                     points: 0
                 });
             }
-            
+
             return new League({
                 level: level,
                 teams: [],
@@ -757,19 +757,19 @@ const DataGenerator = {
                 season: 1,
                 isTeamsLoaded: false
             });
-            
+
             // 生成球队
             league.teams = this.generateTeamsForLeague(level);
-            
+
             // 标记球队已加载
             league.isTeamsLoaded = true;
-            
+
             // 生成赛程
             league.generateSchedule();
-            
+
             // 初始化积分榜
             league.initStandings();
-            
+
             return league;
         }
     },
@@ -816,7 +816,7 @@ const Storage = {
             if (!data) return null;
 
             const parsed = JSON.parse(data);
-            
+
             // 重建对象实例
             if (parsed.playerTeam) {
                 parsed.playerTeam = new Team(parsed.playerTeam);
@@ -882,7 +882,7 @@ const Storage = {
 // ========================================
 const Navigation = {
     currentPage: 'home',
-    
+
     init() {
         const navButtons = document.querySelectorAll('.nav-btn');
         navButtons.forEach(btn => {
@@ -892,7 +892,7 @@ const Navigation = {
             });
         });
     },
-    
+
     navigateTo(pageName) {
         // 更新按钮状态
         document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -901,23 +901,23 @@ const Navigation = {
                 btn.classList.add('active');
             }
         });
-        
+
         // 更新页面显示
         document.querySelectorAll('.page').forEach(page => {
             page.classList.remove('active');
         });
-        
+
         const targetPage = document.getElementById(`${pageName}-page`);
         if (targetPage) {
             targetPage.classList.add('active');
         }
-        
+
         this.currentPage = pageName;
-        
+
         // 触发页面加载事件
         this.onPageLoad(pageName);
     },
-    
+
     onPageLoad(pageName) {
         switch (pageName) {
             case 'team':
@@ -943,7 +943,7 @@ const TeamModule = {
     // 排序状态
     sortBy: 'position', // 默认按位置排序
     sortOrder: 'asc',   // 升序
-    
+
     render() {
         if (!gameState.isInitialized) {
             document.getElementById('team-details').innerHTML = '<p>请先开始新游戏</p>';
@@ -955,48 +955,75 @@ const TeamModule = {
             });
             return;
         }
-        
+
         this.renderTeamInfo();
         this.renderLineup();
         this.renderSquad();
     },
-    
+
+    getNextMatchText() {
+        const team = gameState.playerTeam;
+        const currentLeague = gameState.leagues.find(l => l.level === gameState.currentLeagueLevel);
+        if (!team || !currentLeague || !currentLeague.schedule || currentLeague.schedule.length === 0) {
+            return '无';
+        }
+
+        const startRoundIndex = Math.max((currentLeague.currentRound || 1) - 1, 0);
+        for (let i = startRoundIndex; i < currentLeague.schedule.length; i++) {
+            const roundData = currentLeague.schedule[i];
+            if (!roundData || !Array.isArray(roundData.matches)) continue;
+
+            const match = roundData.matches.find(m =>
+                !m.played && (m.homeTeam === team.id || m.awayTeam === team.id)
+            );
+            if (!match) continue;
+
+            const isHome = match.homeTeam === team.id;
+            const opponentId = isHome ? match.awayTeam : match.homeTeam;
+            const opponent = currentLeague.teams.find(t => t.id === opponentId);
+            return `${isHome ? '主场' : '客场'} 对阵 ${opponent ? opponent.name : '未知对手'}`;
+        }
+
+        return '无';
+    },
+
     renderTeamInfo() {
         const team = gameState.playerTeam;
         const players = team.players;
         const startingLineup = team.startingLineup;
-        
+
         // 计算各位置球员数量
         const positionCounts = { GK: 0, DEF: 0, MID: 0, FWD: 0 };
         const startingCounts = { GK: 0, DEF: 0, MID: 0, FWD: 0 };
-        
+
         players.forEach(p => {
             positionCounts[p.position]++;
             if (startingLineup.includes(p.id)) {
                 startingCounts[p.position]++;
             }
         });
-        
+
         // 计算首发阵容平均能力
         const startingPlayers = startingLineup.map(id => players.find(p => p.id === id)).filter(p => p);
-        const avgStartingAbility = startingPlayers.length > 0 
-            ? Math.floor(startingPlayers.reduce((sum, p) => sum + p.ability, 0) / startingPlayers.length) 
+        const avgStartingAbility = startingPlayers.length > 0
+            ? Math.floor(startingPlayers.reduce((sum, p) => sum + p.ability, 0) / startingPlayers.length)
             : 0;
-        
+
         // 计算替补球员平均能力
         const benchPlayers = players.filter(p => !startingLineup.includes(p.id));
-        const avgBenchAbility = benchPlayers.length > 0 
-            ? Math.floor(benchPlayers.reduce((sum, p) => sum + p.ability, 0) / benchPlayers.length) 
+        const avgBenchAbility = benchPlayers.length > 0
+            ? Math.floor(benchPlayers.reduce((sum, p) => sum + p.ability, 0) / benchPlayers.length)
             : 0;
-        
+
         // 计算平均年龄
-        const avgAge = players.length > 0 
-            ? Math.floor(players.reduce((sum, p) => sum + p.age, 0) / players.length) 
+        const avgAge = players.length > 0
+            ? Math.floor(players.reduce((sum, p) => sum + p.age, 0) / players.length)
             : 0;
-        
+
         // 计算周薪总和
         const totalWage = players.reduce((sum, p) => sum + p.wage, 0);
-        
+        const nextMatchText = this.getNextMatchText();
+
         const detailsHtml = `
             <h3>${team.name}</h3>
             <div class="team-stats-grid">
@@ -1052,52 +1079,83 @@ const TeamModule = {
                 </div>
             </div>
         `;
-        document.getElementById('team-details').innerHTML = detailsHtml;
+        const retroDetailsHtml = `
+            <div class="retro-scoreboard">
+                <div class="club-strip">
+                    <span class="club-emblem">${team.name.slice(0, 1)}</span>
+                    <div>
+                        <h3>${team.name}</h3>
+                        <p>第 ${gameState.currentLeagueLevel} 级联赛 · 4-4-2 阵型</p>
+                    </div>
+                </div>
+                <div class="club-meta">
+                    <div><span>现在日期</span><strong>赛季 ${gameState.currentSeason} · 第 ${gameState.currentRound} 轮</strong></div>
+                    <div><span>流动资金</span><strong>£${team.funds.toLocaleString()}</strong></div>
+                    <div><span>下一场比赛</span><strong>${nextMatchText}</strong></div>
+                </div>
+            </div>
+            <div class="team-stats-grid">
+                <div class="stat-item"><span class="stat-label">球队身价</span><span class="stat-value">£${team.getTeamValue().toLocaleString()}</span></div>
+                <div class="stat-item"><span class="stat-label">首发实力</span><span class="stat-value">${avgStartingAbility}</span></div>
+                <div class="stat-item"><span class="stat-label">替补实力</span><span class="stat-value">${avgBenchAbility}</span></div>
+                <div class="stat-item"><span class="stat-label">球员数量</span><span class="stat-value">${players.length} 人</span></div>
+                <div class="stat-item"><span class="stat-label">平均年龄</span><span class="stat-value">${avgAge} 岁</span></div>
+                <div class="stat-item"><span class="stat-label">周薪支出</span><span class="stat-value">£${totalWage.toLocaleString()}</span></div>
+            </div>
+            <div class="position-stats">
+                <div class="position-stat"><span class="position-name">GK</span><span class="position-count">${startingCounts.GK}/${positionCounts.GK}</span></div>
+                <div class="position-stat"><span class="position-name">DEF</span><span class="position-count">${startingCounts.DEF}/${positionCounts.DEF}</span></div>
+                <div class="position-stat"><span class="position-name">MID</span><span class="position-count">${startingCounts.MID}/${positionCounts.MID}</span></div>
+                <div class="position-stat"><span class="position-name">FOR</span><span class="position-count">${startingCounts.FWD}/${positionCounts.FWD}</span></div>
+            </div>
+        `;
+        document.getElementById('team-details').innerHTML = retroDetailsHtml;
     },
-    
+
     // 渲染首发阵容可视化
     renderLineup() {
         const team = gameState.playerTeam;
         const startingLineup = team.startingLineup;
-        
+
         // 渲染各位置的首发球员
         ['GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
             const el = document.getElementById(`lineup-${pos.toLowerCase()}`);
             if (!el) return;
-            
-            const posPlayers = startingLineup.map(id => 
+
+            const posPlayers = startingLineup.map(id =>
                 team.players.find(p => p.id === id && p.position === pos)
             ).filter(p => p);
-            
-            const html = posPlayers.map(player => `
+
+            const html = posPlayers.map((player, index) => `
                 <div class="lineup-player-card" data-player-id="${player.id}" onclick="TeamModule.toggleLineup('${player.id}')">
+                    <span class="kit-number">${index + 1}</span>
                     <span class="lineup-player-name">${player.name}</span>
                     <span class="lineup-player-ability">${player.ability}</span>
                 </div>
             `).join('');
-            
+
             el.innerHTML = html;
         });
-        
+
         // 渲染阵容验证信息
         this.renderLineupValidation();
     },
-    
+
     // 渲染阵容验证状态
     renderLineupValidation() {
         const team = gameState.playerTeam;
         const startingLineup = team.startingLineup;
-        
+
         // 计算各位置首发人数
         const counts = { GK: 0, DEF: 0, MID: 0, FWD: 0 };
         startingLineup.forEach(id => {
             const player = team.players.find(p => p.id === id);
             if (player) counts[player.position]++;
         });
-        
+
         const total = startingLineup.length;
         const isValid = this.validateLineup(counts, total);
-        
+
         const validationHtml = `
             <div class="validation-status ${isValid ? 'valid' : 'invalid'}">
                 <span class="validation-icon">${isValid ? '✅' : '⚠️'}</span>
@@ -1110,9 +1168,17 @@ const TeamModule = {
                 </span>
             </div>
         `;
-        document.getElementById('lineup-validation').innerHTML = validationHtml;
+        const retroValidationHtml = `
+            <div class="validation-status ${isValid ? 'valid' : 'invalid'}">
+                <span class="validation-icon">${isValid ? 'OK' : '!'}</span>
+                <span class="validation-text">
+                    首发 ${total}/11 · GK ${counts.GK}/1 · DEF ${counts.DEF}/4 · MID ${counts.MID}/4 · FOR ${counts.FWD}/2
+                </span>
+            </div>
+        `;
+        document.getElementById('lineup-validation').innerHTML = retroValidationHtml;
     },
-    
+
     // 验证阵容是否符合规则
     validateLineup(counts, total) {
         // 首发阵容必须11人
@@ -1127,15 +1193,15 @@ const TeamModule = {
         if (counts.FWD < 1) return false;
         return true;
     },
-    
+
     // 切换球员首发/替补状态
     toggleLineup(playerId) {
         const team = gameState.playerTeam;
         const player = team.players.find(p => p.id === playerId);
         if (!player) return;
-        
+
         const isCurrentlyStarting = team.startingLineup.includes(playerId);
-        
+
         if (isCurrentlyStarting) {
             // 从首发移除
             team.startingLineup = team.startingLineup.filter(id => id !== playerId);
@@ -1146,7 +1212,7 @@ const TeamModule = {
                 alert('首发阵容最多11人！请先移除一名球员。');
                 return;
             }
-            
+
             // 检查门将限制（只能有1名门将首发）
             if (player.position === 'GK') {
                 const currentGKCount = team.startingLineup.filter(id => {
@@ -1158,41 +1224,55 @@ const TeamModule = {
                     return;
                 }
             }
-            
+
             team.startingLineup.push(playerId);
         }
-        
+
         // 保存游戏
         Storage.save(gameState);
-        
+
         // 重新渲染
         this.render();
     },
-    
+
     // 排序球员列表
     sortPlayers(players) {
         const sortedPlayers = [...players];
         const positionOrder = { 'GK': 1, 'DEF': 2, 'MID': 3, 'FWD': 4 };
-        
+
         sortedPlayers.sort((a, b) => {
             let comparison = 0;
-            
+
             if (this.sortBy === 'position') {
                 comparison = positionOrder[a.position] - positionOrder[b.position];
+            } else if (this.sortBy === 'status') {
+                const aStarting = gameState.playerTeam.startingLineup.includes(a.id) ? 0 : 1;
+                const bStarting = gameState.playerTeam.startingLineup.includes(b.id) ? 0 : 1;
+                comparison = aStarting - bStarting;
+            } else if (this.sortBy === 'name') {
+                comparison = a.name.localeCompare(b.name, 'zh-CN');
             } else if (this.sortBy === 'ability') {
                 comparison = b.ability - a.ability; // 能力值默认降序（高的在前）
             } else if (this.sortBy === 'age') {
                 comparison = a.age - b.age;
             } else if (this.sortBy === 'value') {
                 comparison = b.value - a.value; // 身价默认降序
+            } else if (this.sortBy === 'wage') {
+                comparison = b.wage - a.wage;
+            } else if (this.sortBy === 'goals') {
+                comparison = (b.goals || 0) - (a.goals || 0);
+            } else if (this.sortBy === 'assists') {
+                comparison = (b.assists || 0) - (a.assists || 0);
+            } else if (this.sortBy === 'appearances') {
+                comparison = (b.appearances || 0) - (a.appearances || 0);
             }
-            
+
             return this.sortOrder === 'asc' ? comparison : -comparison;
         });
-        
+
         return sortedPlayers;
     },
-    
+
     // 切换排序方式
     toggleSort(sortBy) {
         if (this.sortBy === sortBy) {
@@ -1201,16 +1281,16 @@ const TeamModule = {
         } else {
             // 切换排序字段
             this.sortBy = sortBy;
-            // 位置和年龄默认升序，能力值和身价默认降序
-            this.sortOrder = (sortBy === 'ability' || sortBy === 'value') ? 'desc' : 'asc';
+            // 数值表现字段默认降序，文本和位置字段默认升序
+            this.sortOrder = ['ability', 'value', 'wage', 'goals', 'assists', 'appearances'].includes(sortBy) ? 'desc' : 'asc';
         }
         this.renderSquad();
     },
-    
+
     renderSquad() {
         const players = gameState.playerTeam.players;
         const startingLineup = gameState.playerTeam.startingLineup;
-        
+
         // 添加排序控制栏
         const sortControlsHtml = `
             <div class="sort-controls">
@@ -1228,61 +1308,109 @@ const TeamModule = {
                     身价 ${this.sortBy === 'value' ? (this.sortOrder === 'asc' ? '↑' : '↓') : ''}
                 </button>
             </div>
-            <div class="lineup-tip">💡 点击球员卡片可切换首发/替补状态</div>
+            <div class="lineup-tip">💡 点击球员可切换首发/替补状态</div>
         `;
-        
+
         // 排序后的球员列表
         const sortedPlayers = this.sortPlayers(players);
-        
-        const playersHtml = sortedPlayers.map(player => {
+
+        const playersHtml = `
+            <table class="players-table">
+                <thead>
+                    <tr>
+                        <th>状态</th>
+                        <th>姓名</th>
+                        <th>位置</th>
+                        <th>能力值</th>
+                        <th>年龄</th>
+                        <th>身价</th>
+                        <th>周薪</th>
+                        <th>进球</th>
+                        <th>助攻</th>
+                        <th>出场</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${sortedPlayers.map(player => {
             const isStarting = startingLineup.includes(player.id);
             return `
-                <div class="player-card ${isStarting ? 'starting' : ''}" onclick="TeamModule.toggleLineup('${player.id}')">
-                    <div class="player-card-header">
-                        <h4>${player.name}</h4>
-                        <span class="player-badge ${isStarting ? 'badge-starting' : 'badge-sub'}">
-                            ${isStarting ? '首发' : '替补'}
-                        </span>
-                    </div>
-                    <div class="player-info">
-                        <span class="player-info-label">位置:</span>
-                        <span class="player-info-value">${CONFIG.POSITION_NAMES[player.position]}</span>
-                    </div>
-                    <div class="player-info">
-                        <span class="player-info-label">能力值:</span>
-                        <span class="player-info-value ability-value">${player.ability}</span>
-                    </div>
-                    <div class="player-info">
-                        <span class="player-info-label">年龄:</span>
-                        <span class="player-info-value">${player.age}岁</span>
-                    </div>
-                    <div class="player-info">
-                        <span class="player-info-label">身价:</span>
-                        <span class="player-info-value">¥${player.value.toLocaleString()}</span>
-                    </div>
-                    <div class="player-info">
-                        <span class="player-info-label">周薪:</span>
-                        <span class="player-info-value">¥${player.wage.toLocaleString()}</span>
-                    </div>
-                    <div class="player-stats-mini">
-                        <span>进球: ${player.goals || 0}</span>
-                        <span>助攻: ${player.assists || 0}</span>
-                        <span>出场: ${player.appearances || 0}</span>
-                    </div>
-                </div>
-            `;
-        }).join('');
-        
-        document.getElementById('squad-list').innerHTML = sortControlsHtml + playersHtml;
+                            <tr class="${isStarting ? 'starting-row' : ''}" onclick="TeamModule.toggleLineup('${player.id}')">
+                                <td>
+                                    <span class="status-badge ${isStarting ? 'badge-starting' : 'badge-sub'}">
+                                        ${isStarting ? '首发' : '替补'}
+                                    </span>
+                                </td>
+                                <td class="player-name">${player.name}</td>
+                                <td>${CONFIG.POSITION_NAMES[player.position]}</td>
+                                <td class="ability-value">${player.ability}</td>
+                                <td>${player.age}岁</td>
+                                <td>¥${player.value.toLocaleString()}</td>
+                                <td>¥${player.wage.toLocaleString()}</td>
+                                <td>${player.goals || 0}</td>
+                                <td>${player.assists || 0}</td>
+                                <td>${player.appearances || 0}</td>
+                            </tr>
+                        `;
+        }).join('')}
+                </tbody>
+            </table>
+        `;
+
+        const positionLabels = { GK: 'GK', DEF: 'DF', MID: 'MF', FWD: 'FOR' };
+        const sortHeader = (field, label) => {
+            const active = this.sortBy === field;
+            const direction = active ? (this.sortOrder === 'asc' ? 'ascending' : 'descending') : 'none';
+            const marker = active ? (this.sortOrder === 'asc' ? ' ▲' : ' ▼') : '';
+            return `<th class="${active ? 'sortable active' : 'sortable'}" aria-sort="${direction}" onclick="TeamModule.toggleSort('${field}')">${label}${marker}</th>`;
+        };
+        const retroPlayersHtml = `
+            <table class="players-table">
+                <thead>
+                    <tr>
+                        ${sortHeader('status', '状态')}
+                        ${sortHeader('position', '位')}
+                        ${sortHeader('name', '姓名')}
+                        ${sortHeader('ability', '能力')}
+                        ${sortHeader('age', '年龄')}
+                        ${sortHeader('value', '身价')}
+                        ${sortHeader('wage', '周薪')}
+                        ${sortHeader('goals', '进')}
+                        ${sortHeader('assists', '助')}
+                        ${sortHeader('appearances', '出')}
+                    </tr>
+                </thead>
+                <tbody>
+                    ${sortedPlayers.map((player, index) => {
+            const isStarting = startingLineup.includes(player.id);
+            return `
+                            <tr class="${isStarting ? 'starting-row' : ''}" onclick="TeamModule.toggleLineup('${player.id}')">
+                                <td><span class="status-badge ${isStarting ? 'badge-starting' : 'badge-sub'}">${isStarting ? '首发' : '替补'}</span></td>
+                                <td class="position-code">${positionLabels[player.position]}</td>
+                                <td class="player-name"><span>${String(index + 1).padStart(2, '0')}</span>${player.name}</td>
+                                <td class="ability-value">${player.ability}</td>
+                                <td>${player.age}</td>
+                                <td>£${player.value.toLocaleString()}</td>
+                                <td>£${player.wage.toLocaleString()}</td>
+                                <td>${player.goals || 0}</td>
+                                <td>${player.assists || 0}</td>
+                                <td>${player.appearances || 0}</td>
+                            </tr>
+                        `;
+        }).join('')}
+                </tbody>
+            </table>
+        `;
+
+        document.getElementById('squad-list').innerHTML = retroPlayersHtml;
     },
-    
+
     // 显示球员详情弹窗
     showPlayerDetail(playerId) {
         const player = gameState.playerTeam.players.find(p => p.id === playerId);
         if (!player) return;
-        
+
         const isStarting = gameState.playerTeam.startingLineup.includes(playerId);
-        
+
         // 计算球员统计数据
         const statsHtml = `
             <div class="player-stat">
@@ -1298,7 +1426,7 @@ const TeamModule = {
                 <span class="stat-value">${player.assists || 0}个</span>
             </div>
         `;
-        
+
         const detailHtml = `
             <div class="modal-overlay" onclick="TeamModule.closePlayerDetail()">
                 <div class="modal-content" onclick="event.stopPropagation()">
@@ -1346,7 +1474,7 @@ const TeamModule = {
                 </div>
             </div>
         `;
-        
+
         // 创建弹窗容器
         const modalContainer = document.getElementById('player-modal');
         if (!modalContainer) {
@@ -1354,10 +1482,10 @@ const TeamModule = {
             container.id = 'player-modal';
             document.body.appendChild(container);
         }
-        
+
         document.getElementById('player-modal').innerHTML = detailHtml;
     },
-    
+
     // 关闭球员详情弹窗
     closePlayerDetail() {
         const modalContainer = document.getElementById('player-modal');
@@ -1365,37 +1493,37 @@ const TeamModule = {
             modalContainer.innerHTML = '';
         }
     },
-    
+
     // 出售球员
     sellPlayer(playerId) {
         const player = gameState.playerTeam.players.find(p => p.id === playerId);
         if (!player) return;
-        
+
         // 检查是否是首发球员
         const isStarting = gameState.playerTeam.startingLineup.includes(playerId);
-        
+
         // 检查阵容最小人数限制
         const positionCount = gameState.playerTeam.players.filter(p => p.position === player.position).length;
         const minRequired = CONFIG.SQUAD_MIN_PLAYERS[player.position];
-        
+
         if (positionCount <= minRequired) {
             alert(`无法出售！${CONFIG.POSITION_NAMES[player.position]}位置至少需要保留${minRequired}名球员。`);
             return;
         }
-        
+
         // 确认出售
         const confirmMsg = `确定要出售 ${player.name} 吗？\n出售价格: ¥${player.value.toLocaleString()}\n这将增加你的球队资金。`;
         if (!confirm(confirmMsg)) return;
-        
+
         // 执行出售
         gameState.playerTeam.funds += player.value;
-        
+
         // 从球员列表中移除
         const playerIndex = gameState.playerTeam.players.findIndex(p => p.id === playerId);
         if (playerIndex > -1) {
             gameState.playerTeam.players.splice(playerIndex, 1);
         }
-        
+
         // 从首发阵容中移除
         if (isStarting) {
             const lineupIndex = gameState.playerTeam.startingLineup.indexOf(playerId);
@@ -1410,16 +1538,16 @@ const TeamModule = {
                 }
             }
         }
-        
+
         // 保存游戏
         Storage.save(gameState);
-        
+
         // 关闭弹窗
         this.closePlayerDetail();
-        
+
         // 刷新显示
         this.render();
-        
+
         alert(`成功出售 ${player.name}！获得 ¥${player.value.toLocaleString()}`);
     }
 };
@@ -1434,13 +1562,13 @@ const TransferModule = {
         ability: 'all',
         sort: 'ability-desc'
     },
-    
+
     // 当前选中的球员（用于购买/出售确认）
     selectedPlayer: null,
     selectedPlayerIndex: null,
     selectedSellPlayer: null,
     selectedSellPlayerIndex: null,
-    
+
     render() {
         if (!gameState.isInitialized) {
             document.getElementById('transfer-list').innerHTML = '<p>请先开始新游戏</p>';
@@ -1448,18 +1576,18 @@ const TransferModule = {
             document.getElementById('transfer-funds-value').textContent = '¥0';
             return;
         }
-        
+
         // 更新资金显示
         document.getElementById('transfer-funds-value').textContent = `¥${gameState.playerTeam.funds.toLocaleString()}`;
-        
+
         // 初始化筛选器事件
         this.initFilters();
-        
+
         // 渲染转会市场和出售列表
         this.renderTransferMarket();
         this.renderSellList();
     },
-    
+
     initFilters() {
         // 位置筛选
         const positionFilter = document.getElementById('position-filter');
@@ -1470,7 +1598,7 @@ const TransferModule = {
             });
             positionFilter.setAttribute('data-initialized', 'true');
         }
-        
+
         // 能力值筛选
         const abilityFilter = document.getElementById('ability-filter');
         if (abilityFilter && !abilityFilter.hasAttribute('data-initialized')) {
@@ -1480,7 +1608,7 @@ const TransferModule = {
             });
             abilityFilter.setAttribute('data-initialized', 'true');
         }
-        
+
         // 排序筛选
         const sortFilter = document.getElementById('sort-filter');
         if (sortFilter && !sortFilter.hasAttribute('data-initialized')) {
@@ -1490,7 +1618,7 @@ const TransferModule = {
             });
             sortFilter.setAttribute('data-initialized', 'true');
         }
-        
+
         // 刷新市场按钮
         const refreshBtn = document.getElementById('refresh-market-btn');
         if (refreshBtn && !refreshBtn.hasAttribute('data-initialized')) {
@@ -1499,7 +1627,7 @@ const TransferModule = {
             });
             refreshBtn.setAttribute('data-initialized', 'true');
         }
-        
+
         // 购买确认按钮
         const buyConfirmBtn = document.getElementById('buy-confirm-btn');
         if (buyConfirmBtn && !buyConfirmBtn.hasAttribute('data-initialized')) {
@@ -1508,7 +1636,7 @@ const TransferModule = {
             });
             buyConfirmBtn.setAttribute('data-initialized', 'true');
         }
-        
+
         // 购买取消按钮
         const buyCancelBtn = document.getElementById('buy-cancel-btn');
         if (buyCancelBtn && !buyCancelBtn.hasAttribute('data-initialized')) {
@@ -1517,7 +1645,7 @@ const TransferModule = {
             });
             buyCancelBtn.setAttribute('data-initialized', 'true');
         }
-        
+
         // 出售确认按钮
         const sellConfirmBtn = document.getElementById('sell-confirm-btn');
         if (sellConfirmBtn && !sellConfirmBtn.hasAttribute('data-initialized')) {
@@ -1526,7 +1654,7 @@ const TransferModule = {
             });
             sellConfirmBtn.setAttribute('data-initialized', 'true');
         }
-        
+
         // 出售取消按钮
         const sellCancelBtn = document.getElementById('sell-cancel-btn');
         if (sellCancelBtn && !sellCancelBtn.hasAttribute('data-initialized')) {
@@ -1536,16 +1664,16 @@ const TransferModule = {
             sellCancelBtn.setAttribute('data-initialized', 'true');
         }
     },
-    
+
     // 获取筛选和排序后的球员列表
     getFilteredPlayers() {
         let players = [...gameState.transferMarket];
-        
+
         // 位置筛选
         if (this.filters.position !== 'all') {
             players = players.filter(p => p.position === this.filters.position);
         }
-        
+
         // 能力值筛选
         if (this.filters.ability !== 'all') {
             switch (this.filters.ability) {
@@ -1560,7 +1688,7 @@ const TransferModule = {
                     break;
             }
         }
-        
+
         // 排序
         switch (this.filters.sort) {
             case 'ability-desc':
@@ -1582,30 +1710,30 @@ const TransferModule = {
                 players.sort((a, b) => b.age - a.age);
                 break;
         }
-        
+
         return players;
     },
-    
+
     renderTransferMarket() {
         // 如果转会市场为空，生成新球员
         if (gameState.transferMarket.length === 0) {
             gameState.transferMarket = DataGenerator.generateTransferMarket(gameState.currentLeagueLevel, 15);
         }
-        
+
         const filteredPlayers = this.getFilteredPlayers();
-        
+
         if (filteredPlayers.length === 0) {
             document.getElementById('transfer-list').innerHTML = '<p class="message message-warning">没有符合条件的球员</p>';
             return;
         }
-        
+
         const funds = gameState.playerTeam.funds;
-        
+
         const html = filteredPlayers.map((player) => {
             // 找到球员在原始数组中的索引
             const originalIndex = gameState.transferMarket.findIndex(p => p.id === player.id);
             const canAfford = funds >= player.value;
-            
+
             return `
                 <div class="player-card ${canAfford ? '' : 'insufficient'}">
                     <h4>${player.name}</h4>
@@ -1640,10 +1768,10 @@ const TransferModule = {
                 </div>
             `;
         }).join('');
-        
+
         document.getElementById('transfer-list').innerHTML = html;
     },
-    
+
     // 计算球员出售价格（基于能力值和年龄）
     calculateSellPrice(player) {
         // 出售价格 = 身价 * 折扣系数（0.7-0.9）
@@ -1658,16 +1786,16 @@ const TransferModule = {
         }
         return Math.floor(player.value * discountFactor);
     },
-    
+
     renderSellList() {
         const players = gameState.playerTeam.players;
         const startingLineup = gameState.playerTeam.startingLineup;
-        
+
         if (players.length === 0) {
             document.getElementById('sell-list').innerHTML = '<p class="message message-info">球队暂无球员</p>';
             return;
         }
-        
+
         // 检查是否可以出售（需要保留最低阵容人数）
         const positionCounts = {
             'GK': players.filter(p => p.position === 'GK').length,
@@ -1675,12 +1803,12 @@ const TransferModule = {
             'MID': players.filter(p => p.position === 'MID').length,
             'FWD': players.filter(p => p.position === 'FWD').length
         };
-        
+
         const html = players.map((player, index) => {
             const isStarting = startingLineup.includes(player.id);
             const sellPrice = this.calculateSellPrice(player);
             const canSell = positionCounts[player.position] > CONFIG.SQUAD_MIN_PLAYERS[player.position];
-            
+
             return `
                 <div class="player-card ${isStarting ? 'starting' : ''}">
                     <h4>${player.name} ${isStarting ? '⭐' : ''}</h4>
@@ -1715,28 +1843,28 @@ const TransferModule = {
                 </div>
             `;
         }).join('');
-        
+
         document.getElementById('sell-list').innerHTML = html;
     },
-    
+
     // 刷新转会市场
     refreshMarket() {
         gameState.transferMarket = DataGenerator.generateTransferMarket(gameState.currentLeagueLevel, 15);
         Storage.save(gameState);
         this.renderTransferMarket();
     },
-    
+
     // 显示购买确认模态框
     showBuyModal(index) {
         const player = gameState.transferMarket[index];
         if (!player) return;
-        
+
         this.selectedPlayer = player;
         this.selectedPlayerIndex = index;
-        
+
         const funds = gameState.playerTeam.funds;
         const remainingFunds = funds - player.value;
-        
+
         document.getElementById('buy-modal-title').textContent = '购买球员确认';
         document.getElementById('buy-modal-player-info').innerHTML = `
             <div class="details-card">
@@ -1774,63 +1902,63 @@ const TransferModule = {
                 </div>
             </div>
         `;
-        
+
         document.getElementById('buy-modal').classList.add('active');
     },
-    
+
     // 关闭购买模态框
     closeBuyModal() {
         document.getElementById('buy-modal').classList.remove('active');
         this.selectedPlayer = null;
         this.selectedPlayerIndex = null;
     },
-    
+
     // 确认购买
     confirmBuy() {
         if (!this.selectedPlayer || this.selectedPlayerIndex === null) return;
-        
+
         const player = this.selectedPlayer;
         const index = this.selectedPlayerIndex;
-        
+
         if (gameState.playerTeam.funds >= player.value) {
             // 扣除资金
             gameState.playerTeam.funds -= player.value;
-            
+
             // 球员加入球队
             gameState.playerTeam.players.push(player);
-            
+
             // 从转会市场移除
             gameState.transferMarket.splice(index, 1);
-            
+
             // 保存游戏
             Storage.save(gameState);
-            
+
             // 关闭模态框
             this.closeBuyModal();
-            
+
             // 更新显示
             this.render();
             TeamModule.render();
-            
+
             // 显示成功消息
             this.showMessage(`成功签下 ${player.name}！花费 ¥${player.value.toLocaleString()}`, 'success');
         } else {
             this.showMessage('资金不足，无法购买！', 'error');
         }
     },
-    
+
     // 显示出售确认模态框
     showSellModal(index) {
         const player = gameState.playerTeam.players[index];
         if (!player) return;
-        
+
         this.selectedSellPlayer = player;
         this.selectedSellPlayerIndex = index;
-        
+
         const sellPrice = this.calculateSellPrice(player);
         const funds = gameState.playerTeam.funds;
         const newFunds = funds + sellPrice;
-        
+
         document.getElementById('sell-modal-title').textContent = '出售球员确认';
         document.getElementById('sell-modal-player-info').innerHTML = `
             <div class="details-card">
@@ -1868,58 +1996,58 @@ const TransferModule = {
                 </div>
             </div>
         `;
-        
+
         document.getElementById('sell-modal').classList.add('active');
     },
-    
+
     // 关闭出售模态框
     closeSellModal() {
         document.getElementById('sell-modal').classList.remove('active');
         this.selectedSellPlayer = null;
         this.selectedSellPlayerIndex = null;
     },
-    
+
     // 确认出售
     confirmSell() {
         if (!this.selectedSellPlayer || this.selectedSellPlayerIndex === null) return;
-        
+
         const player = this.selectedSellPlayer;
         const index = this.selectedSellPlayerIndex;
         const sellPrice = this.calculateSellPrice(player);
-        
+
         // 检查是否可以出售（保留最低阵容人数）
         const positionCount = gameState.playerTeam.players.filter(p => p.position === player.position).length;
         if (positionCount <= CONFIG.SQUAD_MIN_PLAYERS[player.position]) {
             this.showMessage(`该位置球员不足，无法出售！需要保留至少 ${CONFIG.SQUAD_MIN_PLAYERS[player.position]} 名${CONFIG.POSITION_NAMES[player.position]}`, 'error');
             return;
         }
-        
+
         // 增加资金
         gameState.playerTeam.funds += sellPrice;
-        
+
         // 如果球员在首发阵容中，先移除
         const lineupIndex = gameState.playerTeam.startingLineup.indexOf(player.id);
         if (lineupIndex !== -1) {
             gameState.playerTeam.startingLineup.splice(lineupIndex, 1);
         }
-        
+
         // 从球队移除球员
         gameState.playerTeam.players.splice(index, 1);
-        
+
         // 保存游戏
         Storage.save(gameState);
-        
+
         // 关闭模态框
         this.closeSellModal();
-        
+
         // 更新显示
         this.render();
         TeamModule.render();
-        
+
         // 显示成功消息
         this.showMessage(`成功出售 ${player.name}！获得 ¥${sellPrice.toLocaleString()}`, 'success');
     },
-    
+
     // 显示消息提示
     showMessage(text, type = 'info') {
         // 创建消息元素
@@ -1932,9 +2060,9 @@ const TransferModule = {
         messageDiv.style.transform = 'translateX(-50%)';
         messageDiv.style.zIndex = '2000';
         messageDiv.style.animation = 'fadeIn 0.3s ease';
-        
+
         document.body.appendChild(messageDiv);
-        
+
         // 3秒后自动消失
         setTimeout(() => {
             messageDiv.style.animation = 'fadeIn 0.3s ease reverse';
@@ -1943,7 +2071,7 @@ const TransferModule = {
             }, 300);
         }, 3000);
     },
-    
+
     // 旧方法保留以兼容
     buyPlayer(index) {
         this.showBuyModal(index);
@@ -1982,7 +2110,7 @@ class MatchEngine {
 
     // 获取球队首发阵容
     getStartingLineup(team) {
-        return team.startingLineup.map(id => 
+        return team.startingLineup.map(id =>
             team.players.find(p => p.id === id)
         ).filter(p => p);
     }
@@ -1991,11 +2119,11 @@ class MatchEngine {
     calculateAttackPower(team) {
         const lineup = this.getStartingLineup(team);
         if (lineup.length === 0) return 50;
-        
+
         // 前锋和中场对进攻贡献更大
         const attackers = lineup.filter(p => p.position === 'FWD');
         const midfielders = lineup.filter(p => p.position === 'MID');
-        
+
         let attackPower = 0;
         if (attackers.length > 0) {
             attackPower += attackers.reduce((sum, p) => sum + p.ability, 0) / attackers.length * 0.5;
@@ -2008,7 +2136,7 @@ class MatchEngine {
         if (others.length > 0) {
             attackPower += others.reduce((sum, p) => sum + p.ability, 0) / others.length * 0.2;
         }
-        
+
         return Math.min(200, Math.max(30, attackPower));
     }
 
@@ -2016,11 +2144,11 @@ class MatchEngine {
     calculateDefensePower(team) {
         const lineup = this.getStartingLineup(team);
         if (lineup.length === 0) return 50;
-        
+
         // 门将和后卫对防守贡献更大
         const goalkeeper = lineup.filter(p => p.position === 'GK');
         const defenders = lineup.filter(p => p.position === 'DEF');
-        
+
         let defensePower = 0;
         if (goalkeeper.length > 0) {
             defensePower += goalkeeper.reduce((sum, p) => sum + p.ability, 0) / goalkeeper.length * 0.4;
@@ -2033,7 +2161,7 @@ class MatchEngine {
         if (midfielders.length > 0) {
             defensePower += midfielders.reduce((sum, p) => sum + p.ability, 0) / midfielders.length * 0.2;
         }
-        
+
         return Math.min(200, Math.max(30, defensePower));
     }
 
@@ -2043,28 +2171,28 @@ class MatchEngine {
         const awayAttack = this.calculateAttackPower(this.awayTeam);
         const homeDefense = this.calculateDefensePower(this.homeTeam);
         const awayDefense = this.calculateDefensePower(this.awayTeam);
-        
+
         // 主场优势
         const homeBonus = 1.15;
-        
+
         // 计算预期进球数（基于攻防对比）
         const homeExpectedGoals = Math.max(0.3, (homeAttack * homeBonus - awayDefense * 0.5) / 40);
         const awayExpectedGoals = Math.max(0.3, (awayAttack - homeDefense * 0.5) / 40);
-        
+
         // 使用泊松分布生成进球数
         this.homeScore = MatchEngine.poissonRandom(homeExpectedGoals);
         this.awayScore = MatchEngine.poissonRandom(awayExpectedGoals);
-        
+
         // 限制最大比分
         this.homeScore = Math.min(7, this.homeScore);
         this.awayScore = Math.min(7, this.awayScore);
-        
+
         // 生成比赛事件
         this.generateEvents();
-        
+
         // 生成比赛统计数据
         this.generateStats(homeAttack, awayAttack, homeDefense, awayDefense);
-        
+
         return {
             homeScore: this.homeScore,
             awayScore: this.awayScore,
@@ -2090,14 +2218,14 @@ class MatchEngine {
     // 生成比赛事件
     generateEvents() {
         this.events = [];
-        
+
         // 生成进球事件
         this.generateGoalEvents(this.homeTeam, this.awayTeam, this.homeScore, true);
         this.generateGoalEvents(this.awayTeam, this.homeTeam, this.awayScore, false);
-        
+
         // 生成其他事件（犯规、黄牌等）
         this.generateOtherEvents();
-        
+
         // 按时间排序事件
         this.events.sort((a, b) => a.minute - b.minute);
     }
@@ -2105,10 +2233,10 @@ class MatchEngine {
     // 生成进球事件
     generateGoalEvents(scoringTeam, concedingTeam, goals, isHome) {
         if (goals === 0) return;
-        
+
         const lineup = this.getStartingLineup(scoringTeam);
         if (lineup.length === 0) return;
-        
+
         // 根据位置分配进球概率
         const goalProbabilities = {
             'FWD': 0.5,   // 前锋 50%
@@ -2116,7 +2244,7 @@ class MatchEngine {
             'DEF': 0.14,  // 后卫 14%
             'GK': 0.01    // 门将 1%
         };
-        
+
         // 创建进球球员候选池
         const candidates = [];
         lineup.forEach(player => {
@@ -2125,13 +2253,13 @@ class MatchEngine {
                 candidates.push(player);
             }
         });
-        
+
         // 为每个进球选择进球球员和时间
         const usedMinutes = [];
         for (let i = 0; i < goals; i++) {
             // 随机选择进球球员
             const scorer = candidates[Math.floor(Math.random() * candidates.length)];
-            
+
             // 生成进球时间（避免重复）
             let minute;
             do {
@@ -2142,7 +2270,7 @@ class MatchEngine {
                 minute = Math.min(94, minute);
             } while (usedMinutes.includes(minute) && usedMinutes.length < 90);
             usedMinutes.push(minute);
-            
+
             // 生成助攻球员（50%概率有助攻）
             let assister = null;
             if (Math.random() < 0.5) {
@@ -2157,7 +2285,7 @@ class MatchEngine {
                     }
                 }
             }
-            
+
             this.events.push({
                 type: 'goal',
                 minute: minute,
@@ -2165,7 +2293,7 @@ class MatchEngine {
                 teamName: scoringTeam.name,
                 player: scorer.name,
                 assister: assister ? assister.name : null,
-                score: isHome ? 
+                score: isHome ?
                     `${this.getCurrentScore('home', i + 1)} - ${this.awayScore}` :
                     `${this.homeScore} - ${this.getCurrentScore('away', i + 1)}`
             });
@@ -2186,21 +2314,21 @@ class MatchEngine {
         const totalFouls = Math.floor(Math.random() * 20) + 15; // 15-35次犯规
         const homeFouls = Math.floor(totalFouls * (0.4 + Math.random() * 0.2));
         const awayFouls = totalFouls - homeFouls;
-        
+
         this.homeStats.fouls = homeFouls;
         this.awayStats.fouls = awayFouls;
-        
+
         // 生成黄牌事件（每5-8次犯规可能有1张黄牌）
         const homeYellows = Math.floor(homeFouls / (5 + Math.random() * 3));
         const awayYellows = Math.floor(awayFouls / (5 + Math.random() * 3));
-        
+
         this.homeStats.yellowCards = homeYellows;
         this.awayStats.yellowCards = awayYellows;
-        
+
         // 生成黄牌事件
         this.generateCardEvents(this.homeTeam, homeYellows, 'yellow', true);
         this.generateCardEvents(this.awayTeam, awayYellows, 'yellow', false);
-        
+
         // 红牌概率较低（约5%的比赛有红牌）
         if (Math.random() < 0.05) {
             const isHomeRed = Math.random() < 0.5;
@@ -2217,25 +2345,25 @@ class MatchEngine {
     // 生成牌事件
     generateCardEvents(team, count, cardType, isHome) {
         if (count === 0) return;
-        
+
         const lineup = this.getStartingLineup(team);
         if (lineup.length === 0) return;
-        
+
         // 后卫和中场更容易吃牌
         const cardCandidates = lineup.filter(p => p.position === 'DEF' || p.position === 'MID');
         const candidates = cardCandidates.length > 0 ? cardCandidates : lineup;
-        
+
         const usedMinutes = this.events.map(e => e.minute);
-        
+
         for (let i = 0; i < count; i++) {
             const player = candidates[Math.floor(Math.random() * candidates.length)];
-            
+
             let minute;
             do {
                 minute = Math.floor(Math.random() * 90) + 1;
             } while (usedMinutes.includes(minute));
             usedMinutes.push(minute);
-            
+
             this.events.push({
                 type: cardType === 'yellow' ? 'yellow_card' : 'red_card',
                 minute: minute,
@@ -2252,18 +2380,18 @@ class MatchEngine {
         const baseShots = 8;
         this.homeStats.shots = Math.floor(baseShots + (homeAttack - 50) / 10 + Math.random() * 5);
         this.awayStats.shots = Math.floor(baseShots + (awayAttack - 50) / 10 + Math.random() * 5);
-        
+
         // 射正数
         this.homeStats.shotsOnTarget = Math.floor(this.homeScore + Math.random() * (this.homeStats.shots / 3));
         this.awayStats.shotsOnTarget = Math.floor(this.awayScore + Math.random() * (this.awayStats.shots / 3));
-        
+
         // 控球率（基于中场实力）
         const homeMidfield = this.calculateMidfieldPower(this.homeTeam);
         const awayMidfield = this.calculateMidfieldPower(this.awayTeam);
         const totalMidfield = homeMidfield + awayMidfield;
         this.homeStats.possession = Math.round((homeMidfield / totalMidfield) * 100);
         this.awayStats.possession = 100 - this.homeStats.possession;
-        
+
         // 角球数
         this.homeStats.corners = Math.floor(Math.random() * 6) + 2;
         this.awayStats.corners = Math.floor(Math.random() * 6) + 2;
@@ -2286,19 +2414,19 @@ class MatchEngine {
         if (!awayTeam.isPlayersLoaded) {
             awayTeam.loadPlayers();
         }
-        
+
         // 基于球队实力直接计算比分
         const homeAbility = homeTeam.getTeamAbility();
         const awayAbility = awayTeam.getTeamAbility();
-        
+
         // 计算预期进球（泊松分布参数）
         const homeExpectedGoals = (homeAbility / 150) * 1.5;  // 主场优势
         const awayExpectedGoals = (awayAbility / 150) * 1.0;
-        
+
         // 使用泊松分布生成进球数
         const homeGoals = MatchEngine.poissonRandom(homeExpectedGoals);
         const awayGoals = MatchEngine.poissonRandom(awayExpectedGoals);
-        
+
         return {
             homeTeam: homeTeam.name,
             awayTeam: awayTeam.name,
@@ -2314,26 +2442,26 @@ class MatchEngine {
 // ========================================
 const MatchModule = {
     currentMatchResult: null,
-    
+
     render() {
         if (!gameState.isInitialized) {
             document.getElementById('match-details').innerHTML = '<p>请先开始新游戏</p>';
             return;
         }
-        
+
         this.renderMatchInfo();
     },
-    
+
     renderMatchInfo() {
         const currentLeague = gameState.leagues.find(l => l.level === gameState.currentLeagueLevel);
         const currentRound = currentLeague ? currentLeague.currentRound : 1;
-        
+
         // 检查赛季是否结束
         if (currentLeague && currentRound > CONFIG.MATCHES_PER_SEASON) {
             const standings = currentLeague.getSortedStandings();
             const playerStanding = standings.find(s => s.teamId === gameState.playerTeam.id);
             const playerPosition = standings.findIndex(s => s.teamId === gameState.playerTeam.id) + 1;
-            
+
             const html = `
                 <div class="details-card">
                     <h3>🏆 第${currentLeague.season}赛季已结束</h3>
@@ -2350,12 +2478,12 @@ const MatchModule = {
                         <span class="player-info-value">${playerStanding.points}分</span>
                     </div>
                     <div class="season-result-message mt-2">
-                        ${playerPosition <= 3 && gameState.currentLeagueLevel > 1 ? 
-                            '<p style="color: var(--success-color);">🎉 恭喜！你将升级到第' + (gameState.currentLeagueLevel - 1) + '级联赛！</p>' : 
-                            playerPosition >= 18 && gameState.currentLeagueLevel < CONFIG.LEAGUE_LEVELS ?
-                            '<p style="color: var(--accent-color);">😢 遗憾降级到第' + (gameState.currentLeagueLevel + 1) + '级联赛</p>' :
-                            '<p style="color: var(--text-light);">继续努力，争取下赛季升级！</p>'
-                        }
+                        ${playerPosition <= 3 && gameState.currentLeagueLevel > 1 ?
+                    '<p style="color: var(--success-color);">🎉 恭喜！你将升级到第' + (gameState.currentLeagueLevel - 1) + '级联赛！</p>' :
+                    playerPosition >= 18 && gameState.currentLeagueLevel < CONFIG.LEAGUE_LEVELS ?
+                        '<p style="color: var(--accent-color);">😢 遗憾降级到第' + (gameState.currentLeagueLevel + 1) + '级联赛</p>' :
+                        '<p style="color: var(--text-light);">继续努力，争取下赛季升级！</p>'
+                }
                     </div>
                     <div class="mt-3">
                         <button class="btn btn-primary btn-large" onclick="MatchModule.processSeasonEnd()">
@@ -2367,12 +2495,12 @@ const MatchModule = {
             document.getElementById('match-details').innerHTML = html;
             return;
         }
-        
+
         // 获取当前轮次的比赛
         let nextMatch = null;
         if (currentLeague && currentLeague.schedule[currentRound - 1]) {
             const roundMatches = currentLeague.schedule[currentRound - 1].matches;
-            nextMatch = roundMatches.find(m => 
+            nextMatch = roundMatches.find(m =>
                 m.homeTeam === gameState.playerTeam.id || m.awayTeam === gameState.playerTeam.id
             );
         }
@@ -2449,18 +2577,18 @@ const MatchModule = {
         `;
         document.getElementById('match-details').innerHTML = html;
     },
-    
+
     renderRoundSchedule(league, round) {
         if (!league || round > CONFIG.MATCHES_PER_SEASON) return '';
-        
+
         const roundData = league.schedule[round - 1];
         if (!roundData) return '';
-        
+
         const matchesHtml = roundData.matches.map(match => {
             const homeTeam = league.teams.find(t => t.id === match.homeTeam);
             const awayTeam = league.teams.find(t => t.id === match.awayTeam);
             const isPlayerMatch = match.homeTeam === gameState.playerTeam.id || match.awayTeam === gameState.playerTeam.id;
-            
+
             return `
                 <div class="match-item ${isPlayerMatch ? 'player-match' : ''}">
                     <span class="match-team">${homeTeam ? homeTeam.name : '未知'}</span>
@@ -2471,7 +2599,7 @@ const MatchModule = {
                 </div>
             `;
         }).join('');
-        
+
         return `
             <div class="details-card mt-2">
                 <h4>本轮全部赛程</h4>
@@ -2481,7 +2609,7 @@ const MatchModule = {
             </div>
         `;
     },
-    
+
     calculateWinChance(playerAbility, opponentAbility, isHome) {
         const homeBonus = isHome ? 10 : -10;
         const diff = playerAbility - opponentAbility + homeBonus;
@@ -2501,7 +2629,7 @@ const MatchModule = {
         }
 
         // 找到玩家球队的比赛
-        const playerMatch = roundData.matches.find(m => 
+        const playerMatch = roundData.matches.find(m =>
             m.homeTeam === gameState.playerTeam.id || m.awayTeam === gameState.playerTeam.id
         );
 
@@ -2523,10 +2651,10 @@ const MatchModule = {
         // 使用比赛引擎模拟比赛
         const homeTeam = isHome ? gameState.playerTeam : opponent;
         const awayTeam = isHome ? opponent : gameState.playerTeam;
-        
+
         const engine = new MatchEngine(homeTeam, awayTeam);
         const result = engine.simulate();
-        
+
         // 保存比赛结果用于显示
         this.currentMatchResult = {
             homeTeam: homeTeam,
@@ -2577,7 +2705,7 @@ const MatchModule = {
                 if (playerTeam) {
                     const scorer = playerTeam.players.find(p => p.name === event.player);
                     if (scorer) scorer.goals++;
-                    
+
                     // 更新助攻
                     if (event.assister) {
                         const assister = playerTeam.players.find(p => p.name === event.assister);
@@ -2704,7 +2832,7 @@ const MatchModule = {
                 </button>
             </div>
         `;
-        
+
         document.getElementById('match-details').innerHTML = html;
         LeagueModule.render();
     },
@@ -2718,38 +2846,38 @@ const MatchModule = {
         // 遍历所有联赛处理AI比赛
         for (const league of gameState.leagues) {
             const currentRound = league.currentRound;
-            
+
             // 确保联赛数据已加载
             if (!league.isTeamsLoaded) {
                 league.loadTeams();
             }
-            
+
             // 检查是否有有效的赛程
             if (currentRound > 0 && league.schedule && league.schedule[currentRound - 1]) {
                 const roundData = league.schedule[currentRound - 1];
-                
+
                 for (const match of roundData.matches) {
                     if (match.played) continue;
-                    
+
                     // 检查是否是玩家球队的比赛（玩家比赛已在 playMatch 中处理）
-                    const isPlayerMatch = match.homeTeam === gameState.playerTeam.id || 
-                                          match.awayTeam === gameState.playerTeam.id;
+                    const isPlayerMatch = match.homeTeam === gameState.playerTeam.id ||
+                        match.awayTeam === gameState.playerTeam.id;
                     if (isPlayerMatch) continue;
-                    
+
                     const homeTeam = league.teams.find(t => t.id === match.homeTeam);
                     const awayTeam = league.teams.find(t => t.id === match.awayTeam);
-                    
+
                     if (!homeTeam || !awayTeam) continue;
-                    
+
                     // AI比赛 - 使用简化模拟（只生成比分，不生成详细事件）
                     const result = MatchEngine.simulateMatchSimple(homeTeam, awayTeam);
-                    
+
                     // 更新比赛结果
                     match.homeScore = result.homeGoals;
                     match.awayScore = result.awayGoals;
                     match.played = true;
                     match.events = [];  // 简化模式不生成详细事件
-                    
+
                     // 更新积分榜
                     league.updateStandings(match);
                 }
@@ -2761,48 +2889,48 @@ const MatchModule = {
         // 这个方法现在由 processSeasonEnd 处理
         // 保留为兼容性方法
     },
-    
+
     processSeasonEnd() {
         // 执行升降级
         const result = this.executePromotionRelegation();
-        
+
         // 开始新赛季
         this.startNewSeason();
-        
+
         // 保存游戏
         Storage.save(gameState);
-        
+
         // 显示结果
         alert(result);
-        
+
         // 刷新界面
         this.render();
         LeagueModule.currentViewLevel = gameState.currentLeagueLevel;
         LeagueModule.render();
         TeamModule.render();
     },
-    
+
     executePromotionRelegation() {
         let resultMessage = `第${gameState.currentSeason}赛季结算完成！\n\n`;
         let playerPromoted = false;
         let playerRelegated = false;
-        
+
         // 确保所有联赛完全加载（懒加载联赛需要先加载才能处理升降级）
         for (const league of gameState.leagues) {
             league.ensureFullLoad();
         }
-        
+
         // 处理每个联赛的升降级（从低级别到高级别处理）
         for (let level = CONFIG.LEAGUE_LEVELS; level >= 1; level--) {
             const league = gameState.leagues.find(l => l.level === level);
             if (!league) continue;
-            
+
             const standings = league.getSortedStandings();
-            
+
             // 获取升降级球队
             const promotionTeams = []; // 升级球队（前3名）
             const relegationTeams = []; // 降级球队（后3名）
-            
+
             // 前3名升级（最高级别除外）
             if (level > 1) {
                 for (let i = 0; i < 3; i++) {
@@ -2815,7 +2943,7 @@ const MatchModule = {
                             toLevel: level - 1,
                             standing: teamStanding
                         });
-                        
+
                         // 检查玩家球队是否升级
                         if (team.isPlayerTeam) {
                             playerPromoted = true;
@@ -2824,7 +2952,7 @@ const MatchModule = {
                     }
                 }
             }
-            
+
             // 后3名降级（最低级别除外）
             if (level < CONFIG.LEAGUE_LEVELS) {
                 for (let i = standings.length - 3; i < standings.length; i++) {
@@ -2837,7 +2965,7 @@ const MatchModule = {
                             toLevel: level + 1,
                             standing: teamStanding
                         });
-                        
+
                         // 检查玩家球队是否降级
                         if (team.isPlayerTeam) {
                             playerRelegated = true;
@@ -2846,7 +2974,7 @@ const MatchModule = {
                     }
                 }
             }
-            
+
             // 执行球队移动
             // 移除升级球队
             for (const item of promotionTeams) {
@@ -2856,7 +2984,7 @@ const MatchModule = {
                 }
                 item.team.leagueLevel = item.toLevel;
             }
-            
+
             // 移除降级球队
             for (const item of relegationTeams) {
                 const teamIndex = league.teams.findIndex(t => t.id === item.team.id);
@@ -2865,7 +2993,7 @@ const MatchModule = {
                 }
                 item.team.leagueLevel = item.toLevel;
             }
-            
+
             // 将升级球队添加到上一级联赛
             const upperLeague = gameState.leagues.find(l => l.level === level - 1);
             if (upperLeague && promotionTeams.length > 0) {
@@ -2873,7 +3001,7 @@ const MatchModule = {
                     upperLeague.teams.push(item.team);
                 }
             }
-            
+
             // 将降级球队添加到下一级联赛
             const lowerLeague = gameState.leagues.find(l => l.level === level + 1);
             if (lowerLeague && relegationTeams.length > 0) {
@@ -2882,60 +3010,60 @@ const MatchModule = {
                 }
             }
         }
-        
+
         // 更新玩家联赛级别并处理懒加载
         const oldLeagueLevel = gameState.currentLeagueLevel;
         if (playerPromoted) {
             const newLeagueLevel = oldLeagueLevel - 1;
             const newLeague = gameState.leagues.find(l => l.level === newLeagueLevel);
             const oldLeague = gameState.leagues.find(l => l.level === oldLeagueLevel);
-            
+
             // SubTask 6.1: 升级时触发新联赛数据生成
             if (newLeague) {
                 console.log(`升级到第${newLeagueLevel}级联赛，加载新联赛数据...`);
                 newLeague.ensureFullLoad();
             }
-            
+
             // SubTask 6.2: 原联赛懒加载降级
             if (oldLeague) {
                 console.log(`原第${oldLeagueLevel}级联赛转为懒加载状态...`);
                 oldLeague.toLazyLoad();
             }
-            
+
             gameState.currentLeagueLevel = newLeagueLevel;
         } else if (playerRelegated) {
             const newLeagueLevel = oldLeagueLevel + 1;
             const newLeague = gameState.leagues.find(l => l.level === newLeagueLevel);
             const oldLeague = gameState.leagues.find(l => l.level === oldLeagueLevel);
-            
+
             // 降级时也需要加载新联赛数据
             if (newLeague) {
                 console.log(`降级到第${newLeagueLevel}级联赛，加载新联赛数据...`);
                 newLeague.ensureFullLoad();
             }
-            
+
             // 原联赛懒加载降级
             if (oldLeague) {
                 console.log(`原第${oldLeagueLevel}级联赛转为懒加载状态...`);
                 oldLeague.toLazyLoad();
             }
-            
+
             gameState.currentLeagueLevel = newLeagueLevel;
         }
-        
+
         resultMessage += `\n新赛季即将开始！`;
         return resultMessage;
     },
-    
+
     startNewSeason() {
         // 增加赛季数
         gameState.currentSeason++;
-        
+
         // 为每个联赛重新生成赛程和积分榜
         for (const league of gameState.leagues) {
             league.season = gameState.currentSeason;
             league.currentRound = 1;
-            
+
             // 重置球队统计数据
             for (const team of league.teams) {
                 team.stats = {
@@ -2948,12 +3076,12 @@ const MatchModule = {
                     points: 0
                 };
             }
-            
+
             // 重新生成赛程
             league.generateSchedule();
             league.initStandings();
         }
-        
+
         // 球员年龄增长
         for (const player of gameState.playerTeam.players) {
             player.age++;
@@ -2961,7 +3089,7 @@ const MatchModule = {
             player.value = player.calculateValue();
             player.wage = player.calculateWage();
         }
-        
+
         // 更新转会市场
         gameState.transferMarket = DataGenerator.generateTransferMarket(gameState.currentLeagueLevel, 15);
     }
@@ -2972,21 +3100,21 @@ const MatchModule = {
 // ========================================
 const LeagueModule = {
     currentViewLevel: null, // 当前查看的联赛级别
-    
+
     render() {
         if (!gameState.isInitialized) {
             document.getElementById('league-table').innerHTML = '<p>请先开始新游戏</p>';
             return;
         }
-        
+
         // 初始化查看级别为玩家当前联赛级别
         if (this.currentViewLevel === null) {
             this.currentViewLevel = gameState.currentLeagueLevel;
         }
-        
+
         this.renderStandings();
     },
-    
+
     renderStandings() {
         const viewLeague = gameState.leagues.find(l => l.level === this.currentViewLevel);
         if (!viewLeague) {
@@ -2995,7 +3123,7 @@ const LeagueModule = {
         }
 
         const standings = viewLeague.getSortedStandings();
-        
+
         // 生成联赛切换按钮
         const leagueButtons = gameState.leagues.map(l => `
             <button class="btn ${l.level === this.currentViewLevel ? 'btn-primary' : 'btn-secondary'}" 
@@ -3004,7 +3132,7 @@ const LeagueModule = {
                 ${l.name}
             </button>
         `).join('');
-        
+
         // 标记升降级区域
         const getRowClass = (index, isPlayerTeam) => {
             let classes = isPlayerTeam ? 'player-team' : '';
@@ -3018,7 +3146,7 @@ const LeagueModule = {
             }
             return classes;
         };
-        
+
         const html = `
             <div class="details-card">
                 <h3>${viewLeague.name} - 第${viewLeague.season}赛季</h3>
@@ -3062,10 +3190,10 @@ const LeagueModule = {
                 </tbody>
             </table>
         `;
-        
+
         document.getElementById('league-table').innerHTML = html;
     },
-    
+
     switchLeague(level) {
         this.currentViewLevel = level;
         this.renderStandings();
@@ -3078,79 +3206,79 @@ const LeagueModule = {
 const Game = {
     init() {
         console.log('极简足球经理 v1.0 初始化中...');
-        
+
         // 初始化导航
         Navigation.init();
-        
+
         // 检查是否有存档
         this.checkSavedGame();
-        
+
         // 绑定新游戏按钮
         document.getElementById('new-game-btn').addEventListener('click', () => {
             this.startNewGame();
         });
-        
+
         // 绑定继续游戏按钮
         document.getElementById('load-game-btn').addEventListener('click', () => {
             this.loadGame();
         });
-        
+
         console.log('游戏初始化完成！');
     },
-    
+
     checkSavedGame() {
         if (Storage.hasSave()) {
             document.getElementById('load-game-btn').disabled = false;
         }
     },
-    
+
     startNewGame() {
         if (!confirm('开始新游戏将覆盖现有存档，确定继续吗？')) {
             return;
         }
-        
+
         console.log('开始新游戏...');
-        
+
         // 生成所有联赛和球队
         gameState.leagues = DataGenerator.generateAllLeagues();
-        
+
         // 获取玩家球队
         const playerLeague = gameState.leagues.find(l => l.level === CONFIG.LEAGUE_LEVELS);
         gameState.playerTeam = playerLeague.teams.find(t => t.isPlayerTeam);
-        
+
         // 设置游戏状态
         gameState.currentLeagueLevel = CONFIG.LEAGUE_LEVELS;
         gameState.currentSeason = 1;
         gameState.currentRound = 1;
         gameState.isInitialized = true;
-        
+
         // 生成初始转会市场
         gameState.transferMarket = DataGenerator.generateTransferMarket(gameState.currentLeagueLevel, 15);
-        
+
         // 保存游戏
         Storage.save(gameState);
-        
+
         // 启动自动保存
         Storage.startAutoSave();
-        
+
         alert(`新游戏已创建！\n你的球队"${gameState.playerTeam.name}"已加入第${gameState.currentLeagueLevel}级联赛。\n球队资金: ¥${gameState.playerTeam.funds.toLocaleString()}\n球员数量: ${gameState.playerTeam.players.length}人`);
-        
+
         // 启用继续游戏按钮
         document.getElementById('load-game-btn').disabled = false;
-        
+
         // 跳转到球队页面
         Navigation.navigateTo('team');
     },
-    
+
     loadGame() {
         const savedGame = Storage.load();
         if (savedGame) {
             gameState = savedGame;
             gameState.isInitialized = true;
-            
+
             // 启动自动保存
             Storage.startAutoSave();
-            
+
             alert('游戏加载成功！');
             Navigation.navigateTo('team');
         } else {
