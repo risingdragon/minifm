@@ -10,7 +10,6 @@ const TeamModule = {
         if (!gameState.isInitialized) {
             document.getElementById('team-details').innerHTML = '<p>请先开始新游戏</p>';
             document.getElementById('squad-list').innerHTML = '<p>暂无球员数据</p>';
-            document.getElementById('lineup-validation').innerHTML = '';
             ['GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
                 const el = document.getElementById(`lineup-${pos.toLowerCase()}`);
                 if (el) el.innerHTML = '';
@@ -51,100 +50,11 @@ const TeamModule = {
 
     renderTeamInfo() {
         const team = gameState.playerTeam;
-        const players = team.players;
-        const startingLineup = team.startingLineup;
-
-        // 计算各位置球员数量
-        const positionCounts = { GK: 0, DEF: 0, MID: 0, FWD: 0 };
-        const startingCounts = { GK: 0, DEF: 0, MID: 0, FWD: 0 };
-
-        players.forEach(p => {
-            positionCounts[p.position]++;
-            if (startingLineup.includes(p.id)) {
-                startingCounts[p.position]++;
-            }
-        });
-
-        // 计算首发阵容平均能力
-        const startingPlayers = startingLineup.map(id => players.find(p => p.id === id)).filter(p => p);
-        const avgStartingAbility = startingPlayers.length > 0
-            ? Math.floor(startingPlayers.reduce((sum, p) => sum + p.ability, 0) / startingPlayers.length)
-            : 0;
-
-        // 计算替补球员平均能力
-        const benchPlayers = players.filter(p => !startingLineup.includes(p.id));
-        const avgBenchAbility = benchPlayers.length > 0
-            ? Math.floor(benchPlayers.reduce((sum, p) => sum + p.ability, 0) / benchPlayers.length)
-            : 0;
-
-        // 计算平均年龄
-        const avgAge = players.length > 0
-            ? Math.floor(players.reduce((sum, p) => sum + p.age, 0) / players.length)
-            : 0;
-
-        // 计算周薪总和
-        const totalWage = players.reduce((sum, p) => sum + p.wage, 0);
         const nextMatchText = this.getNextMatchText();
 
-        const detailsHtml = `
-            <h3>${team.name}</h3>
-            <div class="team-stats-grid">
-                <div class="stat-item">
-                    <span class="stat-label">资金</span>
-                    <span class="stat-value">¥${team.funds.toLocaleString()}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">球队身价</span>
-                    <span class="stat-value">¥${team.getTeamValue().toLocaleString()}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">首发实力</span>
-                    <span class="stat-value">${avgStartingAbility}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">替补实力</span>
-                    <span class="stat-value">${avgBenchAbility}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">球员数量</span>
-                    <span class="stat-value">${players.length}人</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">平均年龄</span>
-                    <span class="stat-value">${avgAge}岁</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">周薪支出</span>
-                    <span class="stat-value">¥${totalWage.toLocaleString()}</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">当前联赛</span>
-                    <span class="stat-value">第${gameState.currentLeagueLevel}级</span>
-                </div>
-            </div>
-            <div class="position-stats">
-                <div class="position-stat">
-                    <span class="position-name">门将</span>
-                    <span class="position-count">${startingCounts.GK}/${positionCounts.GK}人</span>
-                </div>
-                <div class="position-stat">
-                    <span class="position-name">后卫</span>
-                    <span class="position-count">${startingCounts.DEF}/${positionCounts.DEF}人</span>
-                </div>
-                <div class="position-stat">
-                    <span class="position-name">中场</span>
-                    <span class="position-count">${startingCounts.MID}/${positionCounts.MID}人</span>
-                </div>
-                <div class="position-stat">
-                    <span class="position-name">前锋</span>
-                    <span class="position-count">${startingCounts.FWD}/${positionCounts.FWD}人</span>
-                </div>
-            </div>
-        `;
         const retroDetailsHtml = `
             <div class="retro-scoreboard">
                 <div class="club-strip">
-                    <span class="club-emblem">${team.name.slice(0, 1)}</span>
                     <div>
                         <h3>${team.name}</h3>
                         <p>第 ${gameState.currentLeagueLevel} 级联赛 · 4-4-2 阵型</p>
@@ -155,20 +65,6 @@ const TeamModule = {
                     <div><span>流动资金</span><strong>£${team.funds.toLocaleString()}</strong></div>
                     <div><span>下一场比赛</span><strong>${nextMatchText}</strong></div>
                 </div>
-            </div>
-            <div class="team-stats-grid">
-                <div class="stat-item"><span class="stat-label">球队身价</span><span class="stat-value">£${team.getTeamValue().toLocaleString()}</span></div>
-                <div class="stat-item"><span class="stat-label">首发实力</span><span class="stat-value">${avgStartingAbility}</span></div>
-                <div class="stat-item"><span class="stat-label">替补实力</span><span class="stat-value">${avgBenchAbility}</span></div>
-                <div class="stat-item"><span class="stat-label">球员数量</span><span class="stat-value">${players.length} 人</span></div>
-                <div class="stat-item"><span class="stat-label">平均年龄</span><span class="stat-value">${avgAge} 岁</span></div>
-                <div class="stat-item"><span class="stat-label">周薪支出</span><span class="stat-value">£${totalWage.toLocaleString()}</span></div>
-            </div>
-            <div class="position-stats">
-                <div class="position-stat"><span class="position-name">GK</span><span class="position-count">${startingCounts.GK}/${positionCounts.GK}</span></div>
-                <div class="position-stat"><span class="position-name">DEF</span><span class="position-count">${startingCounts.DEF}/${positionCounts.DEF}</span></div>
-                <div class="position-stat"><span class="position-name">MID</span><span class="position-count">${startingCounts.MID}/${positionCounts.MID}</span></div>
-                <div class="position-stat"><span class="position-name">FOR</span><span class="position-count">${startingCounts.FWD}/${positionCounts.FWD}</span></div>
             </div>
         `;
         document.getElementById('team-details').innerHTML = retroDetailsHtml;
@@ -199,64 +95,8 @@ const TeamModule = {
             el.innerHTML = html;
         });
 
-        // 渲染阵容验证信息
-        this.renderLineupValidation();
     },
 
-    // 渲染阵容验证状态
-    renderLineupValidation() {
-        const team = gameState.playerTeam;
-        const startingLineup = team.startingLineup;
-
-        // 计算各位置首发人数
-        const counts = { GK: 0, DEF: 0, MID: 0, FWD: 0 };
-        startingLineup.forEach(id => {
-            const player = team.players.find(p => p.id === id);
-            if (player) counts[player.position]++;
-        });
-
-        const total = startingLineup.length;
-        const isValid = this.validateLineup(counts, total);
-
-        const validationHtml = `
-            <div class="validation-status ${isValid ? 'valid' : 'invalid'}">
-                <span class="validation-icon">${isValid ? '✅' : '⚠️'}</span>
-                <span class="validation-text">
-                    首发阵容: ${total}/11人 
-                    | 门将: ${counts.GK}/1 
-                    | 后卫: ${counts.DEF} (最少3) 
-                    | 中场: ${counts.MID} (最少2) 
-                    | 前锋: ${counts.FWD} (最少1)
-                </span>
-            </div>
-        `;
-        const retroValidationHtml = `
-            <div class="validation-status ${isValid ? 'valid' : 'invalid'}">
-                <span class="validation-icon">${isValid ? 'OK' : '!'}</span>
-                <span class="validation-text">
-                    首发 ${total}/11 · GK ${counts.GK}/1 · DEF ${counts.DEF}/4 · MID ${counts.MID}/4 · FOR ${counts.FWD}/2
-                </span>
-            </div>
-        `;
-        document.getElementById('lineup-validation').innerHTML = retroValidationHtml;
-    },
-
-    // 验证阵容是否符合规则
-    validateLineup(counts, total) {
-        // 首发阵容必须11人
-        if (total !== 11) return false;
-        // 必须有1名门将
-        if (counts.GK !== 1) return false;
-        // 至少3名后卫
-        if (counts.DEF < 3) return false;
-        // 至少2名中场
-        if (counts.MID < 2) return false;
-        // 至少1名前锋
-        if (counts.FWD < 1) return false;
-        return true;
-    },
-
-    // 切换球员首发/替补状态
     toggleLineup(playerId) {
         const team = gameState.playerTeam;
         const player = team.players.find(p => p.id === playerId);
@@ -613,4 +453,3 @@ const TeamModule = {
         alert(`成功出售 ${player.name}！获得 ¥${player.value.toLocaleString()}`);
     }
 };
-

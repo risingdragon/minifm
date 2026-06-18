@@ -599,13 +599,6 @@ body {
 /* ========================================
    球队统计网格
    ======================================== */
-.team-stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-}
-
 .stat-item {
     display: flex;
     flex-direction: column;
@@ -626,36 +619,6 @@ body {
 }
 
 /* ========================================
-   位置统计
-   ======================================== */
-.position-stats {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-    padding-top: 0.5rem;
-    border-top: 1px solid var(--border-color);
-}
-
-.position-stat {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.25rem 0.75rem;
-    background: var(--background-color);
-    border-radius: 4px;
-}
-
-.position-name {
-    font-weight: 500;
-    color: var(--text-color);
-}
-
-.position-count {
-    color: var(--secondary-color);
-    font-weight: 600;
-}
-
-/* ========================================
    首发阵容区域
    ======================================== */
 .lineup-section {
@@ -670,39 +633,6 @@ body {
     color: var(--primary-color);
     margin-bottom: 0.5rem;
     font-size: 1.2rem;
-}
-
-.lineup-validation {
-    margin-bottom: 1rem;
-}
-
-.validation-status {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1rem;
-    border-radius: 8px;
-    font-size: 0.9rem;
-}
-
-.validation-status.valid {
-    background: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
-}
-
-.validation-status.invalid {
-    background: #fff3cd;
-    color: #856404;
-    border: 1px solid #ffeeba;
-}
-
-.validation-icon {
-    font-size: 1.2rem;
-}
-
-.validation-text {
-    flex: 1;
 }
 
 /* ========================================
@@ -858,15 +788,6 @@ body {
    响应式阵容布局
    ======================================== */
 @media screen and (max-width: 768px) {
-    .team-stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .position-stats {
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-    
     .lineup-field {
         padding: 1rem;
     }
@@ -885,16 +806,9 @@ body {
         font-size: 0.7rem;
     }
     
-    .validation-text {
-        font-size: 0.8rem;
-    }
 }
 
 @media screen and (max-width: 480px) {
-    .team-stats-grid {
-        grid-template-columns: 1fr 1fr;
-    }
-    
     .lineup-players {
         gap: 0.5rem;
     }
@@ -1784,17 +1698,6 @@ body {
     background: rgba(0, 6, 28, 0.72);
 }
 
-.club-emblem {
-    display: grid;
-    place-items: center;
-    width: 64px;
-    height: 30px;
-    border-radius: 50%;
-    background: radial-gradient(circle, #ff2635 0 45%, #7d0011 70%, #09000a 100%);
-    color: #ffe600;
-    font-weight: 900;
-}
-
 .club-strip h3 {
     margin: 0 0 2px;
     color: #ffffff;
@@ -1832,32 +1735,10 @@ body {
     color: #ffffff;
 }
 
-#team-page .team-stats-grid {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 4px;
-    padding: 0 10px 10px;
-    margin: 0;
-}
-
-#team-page .stat-item,
-#team-page .position-stat {
+#team-page .stat-item {
     border-radius: 0;
     background: rgba(2, 8, 36, 0.78);
     border: 1px solid rgba(55, 146, 255, 0.55);
-}
-
-#team-page .position-stats {
-    gap: 8px;
-    padding: 8px 10px 10px;
-    border-top: 1px solid rgba(55, 146, 255, 0.55);
-}
-
-#team-page .position-name {
-    color: #ffe200;
-}
-
-#team-page .position-count {
-    color: #8ff7ff;
 }
 
 #team-page .squad-section {
@@ -1881,26 +1762,6 @@ body {
     color: #ffffff;
     background: rgba(0, 3, 24, 0.78);
     font-size: 1.1rem;
-}
-
-#team-page .lineup-validation {
-    margin-bottom: 8px;
-}
-
-#team-page .validation-status {
-    border-radius: 0;
-    padding: 6px 8px;
-    background: rgba(0, 6, 28, 0.78);
-    border: 1px solid rgba(61, 136, 255, 0.6);
-    color: #ffffff;
-}
-
-#team-page .validation-status.valid .validation-icon {
-    color: #8fff58;
-}
-
-#team-page .validation-status.invalid .validation-icon {
-    color: #ffe200;
 }
 
 #team-page .players-table {
@@ -2103,9 +1964,6 @@ body {
         grid-row: auto;
     }
 
-    #team-page .team-stats-grid {
-        grid-template-columns: repeat(3, 1fr);
-    }
 }
 
 @media screen and (max-width: 768px) {
@@ -2119,10 +1977,6 @@ body {
 
     .club-strip {
         min-width: 0;
-    }
-
-    #team-page .team-stats-grid {
-        grid-template-columns: repeat(2, 1fr);
     }
 
     #team-page .lineup-field {

@@ -73,14 +73,11 @@ const Game = {
         if (savedGame) {
             gameState = savedGame;
             gameState.isInitialized = true;
-
+            
             // 启动自动保存
             Storage.startAutoSave();
-
-            alert('游戏加载成功！');
+            
             Navigation.navigateTo('team');
-        } else {
-            alert('没有找到存档！');
         }
     }
 };
