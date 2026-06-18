@@ -270,15 +270,15 @@ const TeamModule = {
                 <thead>
                     <tr>
                         ${sortHeader('status', '状态')}
-                        ${sortHeader('position', '位')}
+                        ${sortHeader('position', '位置')}
                         ${sortHeader('name', '姓名')}
                         ${sortHeader('ability', '能力')}
                         ${sortHeader('age', '年龄')}
                         ${sortHeader('value', '身价')}
                         ${sortHeader('wage', '周薪')}
-                        ${sortHeader('goals', '进')}
-                        ${sortHeader('assists', '助')}
-                        ${sortHeader('appearances', '出')}
+                        ${sortHeader('goals', '进球')}
+                        ${sortHeader('assists', '助攻')}
+                        ${sortHeader('appearances', '出场')}
                     </tr>
                 </thead>
                 <tbody>
@@ -288,7 +288,7 @@ const TeamModule = {
                             <tr class="${isStarting ? 'starting-row' : ''}" onclick="TeamModule.toggleLineup('${player.id}')">
                                 <td><span class="status-badge ${isStarting ? 'badge-starting' : 'badge-sub'}">${isStarting ? '首发' : '替补'}</span></td>
                                 <td class="position-code">${positionLabels[player.position]}</td>
-                                <td class="player-name"><span>${String(index + 1).padStart(2, '0')}</span>${player.name}</td>
+                                <td class="player-name">${player.name}</td>
                                 <td class="ability-value">${player.ability}</td>
                                 <td>${player.age}</td>
                                 <td>£${player.value.toLocaleString()}</td>

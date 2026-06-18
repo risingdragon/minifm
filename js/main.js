@@ -31,7 +31,7 @@ const Game = {
     },
 
     startNewGame() {
-        if (!confirm('开始新游戏将覆盖现有存档，确定继续吗？')) {
+        if (Storage.hasSave() && !confirm('开始新游戏将覆盖现有存档，确定继续吗？')) {
             return;
         }
 
