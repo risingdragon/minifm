@@ -46,6 +46,8 @@ class Player {
         this.position = data.position || 'DEF';
         this.ability = data.ability || 50;
         this.age = data.age || 20;
+        this.potential = Number.isFinite(data.potential) ? data.potential : this.generatePotential();
+        this.shirtNumber = Number.isInteger(data.shirtNumber) ? data.shirtNumber : null;
         this.value = data.value || this.calculateValue();
         this.wage = data.wage || this.calculateWage();
         this.goals = data.goals || 0;
@@ -55,6 +57,19 @@ class Player {
 
     generateId() {
         return 'player_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    generatePotential() {
+        let growthRange = 5;
+        if (this.age <= 21) {
+            growthRange = 45;
+        } else if (this.age <= 25) {
+            growthRange = 30;
+        } else if (this.age <= 29) {
+            growthRange = 15;
+        }
+
+        return Math.min(200, this.ability + Math.floor(Math.random() * (growthRange + 1)));
     }
 
     calculateValue() {
@@ -74,6 +89,8 @@ class Player {
             name: this.name,
             position: this.position,
             ability: this.ability,
+            potential: this.potential,
+            shirtNumber: this.shirtNumber,
             age: this.age,
             value: this.value,
             wage: this.wage,
@@ -109,6 +126,10 @@ class Team {
         // === 懒加载状态 ===
         this.isPlayersLoaded = data.isPlayersLoaded !== undefined ? data.isPlayersLoaded : true;
         this.playersData = data.playersData || null;
+
+        if (this.isPlayersLoaded) {
+            this.assignShirtNumbers();
+        }
     }
 
     // 静态方法：生成球队ID
@@ -143,11 +164,56 @@ class Team {
         }
     }
 
+    assignShirtNumbers(options = {}) {
+        const prioritizeStarting = options.prioritizeStarting || false;
+        const preserveExisting = options.preserveExisting !== false;
+        const usedNumbers = new Set();
+
+        if (prioritizeStarting && !preserveExisting) {
+            this.players.forEach(player => {
+                player.shirtNumber = null;
+            });
+        }
+
+        this.players.forEach(player => {
+            if (Number.isInteger(player.shirtNumber) &&
+                player.shirtNumber >= 1 &&
+                player.shirtNumber <= 99 &&
+                !usedNumbers.has(player.shirtNumber)) {
+                usedNumbers.add(player.shirtNumber);
+                return;
+            }
+
+            player.shirtNumber = null;
+        });
+
+        const startingPlayers = this.startingLineup
+            .map(id => this.players.find(player => player.id === id))
+            .filter(player => player);
+        const substitutePlayers = this.players.filter(player => !this.startingLineup.includes(player.id));
+        const orderedPlayers = prioritizeStarting ? [...startingPlayers, ...substitutePlayers] : this.players;
+
+        orderedPlayers.forEach((player, index) => {
+            if (player.shirtNumber) return;
+
+            let number = prioritizeStarting && index >= startingPlayers.length ? 12 : 1;
+            while (usedNumbers.has(number) && number <= 99) {
+                number++;
+            }
+
+            player.shirtNumber = number <= 99 ? number : null;
+            if (player.shirtNumber) {
+                usedNumbers.add(player.shirtNumber);
+            }
+        });
+    }
+
     // 按需加载球员数据（懒加载）
     loadPlayers() {
         if (this.isPlayersLoaded) return;
 
         // 如果有缓存数据，从缓存恢复
+        const hasSavedPlayersData = Boolean(this.playersData);
         if (this.playersData) {
             this.players = this.playersData.map(p => new Player(p));
             this.playersData = null;
@@ -157,6 +223,10 @@ class Team {
         }
 
         this.setDefaultLineup();
+        this.assignShirtNumbers({
+            prioritizeStarting: !hasSavedPlayersData,
+            preserveExisting: hasSavedPlayersData
+        });
         this.isPlayersLoaded = true;
     }
 
@@ -439,4 +509,3 @@ let gameState = {
     transferMarket: [],
     lastSaveTime: null
 };
-

@@ -751,7 +751,8 @@ body {
     color: white;
 }
 
-.ability-value {
+.ability-value,
+.potential-value {
     color: var(--secondary-color);
     font-weight: 600;
 }
@@ -1580,7 +1581,9 @@ body {
     color: var(--primary-color);
 }
 
-.players-table .ability-value {
+.players-table .shirt-number,
+.players-table .ability-value,
+.players-table .potential-value {
     font-weight: bold;
     color: var(--secondary-color);
 }
@@ -1663,13 +1666,8 @@ body {
     box-shadow: inset 0 0 18px rgba(39, 136, 255, 0.32);
 }
 
-#team-page .team-info {
+#team-page .details-card {
     grid-column: 1 / -1;
-    padding: 10px;
-}
-
-#team-page .team-info > h2 {
-    display: none;
 }
 
 .retro-scoreboard,
@@ -1827,7 +1825,9 @@ body {
 }
 
 #team-page .position-code,
-#team-page .players-table .ability-value {
+#team-page .players-table .shirt-number,
+#team-page .players-table .ability-value,
+#team-page .players-table .potential-value {
     color: #8ff7ff;
     font-weight: 800;
 }
@@ -1981,6 +1981,11 @@ body {
 
     #team-page .lineup-field {
         min-height: 430px;
+    }
+
+    #team-page .players-table th:nth-child(-n+6),
+    #team-page .players-table td:nth-child(-n+6) {
+        display: table-cell;
     }
 
     #team-page .players-table th:nth-child(n+7),

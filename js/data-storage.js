@@ -143,6 +143,7 @@ const DataGenerator = {
                 isPlayersLoaded: true
             });
             team.setDefaultLineup();
+            team.assignShirtNumbers({ prioritizeStarting: true, preserveExisting: false });
             return team;
         }
     },
@@ -434,4 +435,3 @@ const Storage = {
         }
     }
 };
-

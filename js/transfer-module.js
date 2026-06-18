@@ -372,6 +372,7 @@ const TransferModule = {
 
             // 球员加入球队
             gameState.playerTeam.players.push(player);
+            gameState.playerTeam.assignShirtNumbers();
 
             // 从转会市场移除
             gameState.transferMarket.splice(index, 1);
@@ -523,4 +524,3 @@ const TransferModule = {
         this.showBuyModal(index);
     }
 };
-

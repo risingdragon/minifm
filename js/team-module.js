@@ -3,7 +3,7 @@
 // ========================================
 const TeamModule = {
     // 排序状态
-    sortBy: 'position', // 默认按位置排序
+    sortBy: 'status', // 默认按首发/替补排序
     sortOrder: 'asc',   // 升序
 
     render() {
@@ -86,7 +86,7 @@ const TeamModule = {
 
             const html = posPlayers.map((player, index) => `
                 <div class="lineup-player-card" data-player-id="${player.id}" onclick="TeamModule.toggleLineup('${player.id}')">
-                    <span class="kit-number">${index + 1}</span>
+                    <span class="kit-number">${player.shirtNumber || '-'}</span>
                     <span class="lineup-player-name">${player.name}</span>
                     <span class="lineup-player-ability">${player.ability}</span>
                 </div>
@@ -151,22 +151,26 @@ const TeamModule = {
                 const aStarting = gameState.playerTeam.startingLineup.includes(a.id) ? 0 : 1;
                 const bStarting = gameState.playerTeam.startingLineup.includes(b.id) ? 0 : 1;
                 comparison = aStarting - bStarting;
+            } else if (this.sortBy === 'shirtNumber') {
+                comparison = (a.shirtNumber || 100) - (b.shirtNumber || 100);
             } else if (this.sortBy === 'name') {
                 comparison = a.name.localeCompare(b.name, 'zh-CN');
             } else if (this.sortBy === 'ability') {
-                comparison = b.ability - a.ability; // 能力值默认降序（高的在前）
+                comparison = a.ability - b.ability;
+            } else if (this.sortBy === 'potential') {
+                comparison = a.potential - b.potential;
             } else if (this.sortBy === 'age') {
                 comparison = a.age - b.age;
             } else if (this.sortBy === 'value') {
-                comparison = b.value - a.value; // 身价默认降序
+                comparison = a.value - b.value;
             } else if (this.sortBy === 'wage') {
-                comparison = b.wage - a.wage;
+                comparison = a.wage - b.wage;
             } else if (this.sortBy === 'goals') {
-                comparison = (b.goals || 0) - (a.goals || 0);
+                comparison = (a.goals || 0) - (b.goals || 0);
             } else if (this.sortBy === 'assists') {
-                comparison = (b.assists || 0) - (a.assists || 0);
+                comparison = (a.assists || 0) - (b.assists || 0);
             } else if (this.sortBy === 'appearances') {
-                comparison = (b.appearances || 0) - (a.appearances || 0);
+                comparison = (a.appearances || 0) - (b.appearances || 0);
             }
 
             return this.sortOrder === 'asc' ? comparison : -comparison;
@@ -184,7 +188,7 @@ const TeamModule = {
             // 切换排序字段
             this.sortBy = sortBy;
             // 数值表现字段默认降序，文本和位置字段默认升序
-            this.sortOrder = ['ability', 'value', 'wage', 'goals', 'assists', 'appearances'].includes(sortBy) ? 'desc' : 'asc';
+            this.sortOrder = ['ability', 'potential', 'value', 'wage', 'goals', 'assists', 'appearances'].includes(sortBy) ? 'desc' : 'asc';
         }
         this.renderSquad();
     },
@@ -221,9 +225,11 @@ const TeamModule = {
                 <thead>
                     <tr>
                         <th>状态</th>
+                        <th>号码</th>
                         <th>姓名</th>
                         <th>位置</th>
                         <th>能力值</th>
+                        <th>潜力</th>
                         <th>年龄</th>
                         <th>身价</th>
                         <th>周薪</th>
@@ -242,9 +248,11 @@ const TeamModule = {
                                         ${isStarting ? '首发' : '替补'}
                                     </span>
                                 </td>
+                                <td class="shirt-number">${player.shirtNumber || '-'}</td>
                                 <td class="player-name">${player.name}</td>
                                 <td>${CONFIG.POSITION_NAMES[player.position]}</td>
                                 <td class="ability-value">${player.ability}</td>
+                                <td class="potential-value">${player.potential}</td>
                                 <td>${player.age}岁</td>
                                 <td>¥${player.value.toLocaleString()}</td>
                                 <td>¥${player.wage.toLocaleString()}</td>
@@ -258,7 +266,7 @@ const TeamModule = {
             </table>
         `;
 
-        const positionLabels = { GK: 'GK', DEF: 'DF', MID: 'MF', FWD: 'FOR' };
+        const positionLabels = { GK: 'GK', DEF: 'DF', MID: 'MF', FWD: 'CF' };
         const sortHeader = (field, label) => {
             const active = this.sortBy === field;
             const direction = active ? (this.sortOrder === 'asc' ? 'ascending' : 'descending') : 'none';
@@ -271,8 +279,10 @@ const TeamModule = {
                     <tr>
                         ${sortHeader('status', '状态')}
                         ${sortHeader('position', '位置')}
+                        ${sortHeader('shirtNumber', '号码')}
                         ${sortHeader('name', '姓名')}
                         ${sortHeader('ability', '能力')}
+                        ${sortHeader('potential', '潜力')}
                         ${sortHeader('age', '年龄')}
                         ${sortHeader('value', '身价')}
                         ${sortHeader('wage', '周薪')}
@@ -288,8 +298,10 @@ const TeamModule = {
                             <tr class="${isStarting ? 'starting-row' : ''}" onclick="TeamModule.toggleLineup('${player.id}')">
                                 <td><span class="status-badge ${isStarting ? 'badge-starting' : 'badge-sub'}">${isStarting ? '首发' : '替补'}</span></td>
                                 <td class="position-code">${positionLabels[player.position]}</td>
+                                <td class="shirt-number">${player.shirtNumber || '-'}</td>
                                 <td class="player-name">${player.name}</td>
                                 <td class="ability-value">${player.ability}</td>
+                                <td class="potential-value">${player.potential}</td>
                                 <td>${player.age}</td>
                                 <td>£${player.value.toLocaleString()}</td>
                                 <td>£${player.wage.toLocaleString()}</td>
@@ -347,6 +359,10 @@ const TeamModule = {
                                 <div class="detail-item">
                                     <span class="detail-label">能力值</span>
                                     <span class="detail-value ability-badge">${player.ability}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">潜力</span>
+                                    <span class="detail-value ability-badge">${player.potential}</span>
                                 </div>
                                 <div class="detail-item">
                                     <span class="detail-label">年龄</span>
