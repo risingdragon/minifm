@@ -711,12 +711,6 @@ body {
     max-width: 100px;
 }
 
-.lineup-player-ability {
-    font-size: 0.75rem;
-    color: var(--secondary-color);
-    font-weight: 500;
-}
-
 /* ========================================
    球员卡片增强样式
    ======================================== */
@@ -801,10 +795,6 @@ body {
     .lineup-player-name {
         font-size: 0.75rem;
         max-width: 80px;
-    }
-    
-    .lineup-player-ability {
-        font-size: 0.7rem;
     }
     
 }
@@ -1896,49 +1886,38 @@ body {
 
 #team-page .lineup-player-card {
     position: relative;
-    min-width: 48px;
-    width: 54px;
-    min-height: 46px;
-    padding: 7px 4px 5px;
-    border-radius: 0 0 10px 10px;
-    background: linear-gradient(180deg, #ff202f 0 62%, #170007 63% 100%);
-    border: 1px solid #3a0009;
+    min-width: 62px;
+    width: 70px;
+    min-height: 70px;
+    padding: 28px 6px 10px;
+    border: 0;
+    border-radius: 0;
+    background: url("../assets/lineup-jersey.png") center top / contain no-repeat;
     color: #ffe200;
-    box-shadow: 0 2px 0 #05020c, inset 0 0 8px rgba(255, 246, 0, 0.2);
+    box-shadow: none;
+    overflow: visible;
 }
 
 #team-page .lineup-player-card::before,
 #team-page .lineup-player-card::after {
-    content: "";
-    position: absolute;
-    top: 8px;
-    width: 13px;
-    height: 18px;
-    background: #ff202f;
-}
-
-#team-page .lineup-player-card::before {
-    left: -9px;
-    transform: skewY(-22deg);
-}
-
-#team-page .lineup-player-card::after {
-    right: -9px;
-    transform: skewY(22deg);
+    content: none;
 }
 
 #team-page .kit-number {
     position: relative;
     z-index: 1;
-    font-size: 1rem;
+    display: block;
+    margin-top: 0;
+    font-size: 1.1rem;
     font-weight: 900;
     line-height: 1;
+    text-shadow: 1px 1px 0 #6b000b, 0 0 4px rgba(255, 238, 0, 0.42);
 }
 
 #team-page .lineup-player-name {
     position: absolute;
     left: 50%;
-    top: 100%;
+    top: calc(100% + 3px);
     max-width: 86px;
     transform: translateX(-50%);
     color: #ffffff;
@@ -1946,11 +1925,9 @@ body {
     text-shadow: 1px 1px 0 #000;
 }
 
-#team-page .lineup-player-ability {
-    position: relative;
-    z-index: 1;
-    color: #8ff7ff;
-    font-size: 0.68rem;
+#team-page .lineup-player-card:hover {
+    transform: translateY(-3px);
+    filter: saturate(1.14) brightness(1.05);
 }
 
 @media screen and (max-width: 1100px) {

@@ -88,7 +88,6 @@ const TeamModule = {
                 <div class="lineup-player-card" data-player-id="${player.id}" onclick="TeamModule.toggleLineup('${player.id}')">
                     <span class="kit-number">${player.shirtNumber || '-'}</span>
                     <span class="lineup-player-name">${player.name}</span>
-                    <span class="lineup-player-ability">${player.ability}</span>
                 </div>
             `).join('');
 
