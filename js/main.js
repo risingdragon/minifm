@@ -21,6 +21,12 @@ const Game = {
             this.loadGame();
         });
 
+        document.getElementById('advance-game-btn').addEventListener('click', () => {
+            this.advanceGame();
+        });
+
+        this.updateAdvanceButton();
+
         console.log('游戏初始化完成！');
     },
 
@@ -28,6 +34,23 @@ const Game = {
         if (Storage.hasSave()) {
             document.getElementById('load-game-btn').disabled = false;
         }
+    },
+
+    updateAdvanceButton() {
+        const advanceBtn = document.getElementById('advance-game-btn');
+        if (!advanceBtn) return;
+
+        advanceBtn.hidden = !gameState.isInitialized;
+        advanceBtn.disabled = !gameState.isInitialized;
+    },
+
+    advanceGame() {
+        if (!gameState.isInitialized) return;
+        if (Navigation.currentPage !== 'match') {
+            Navigation.navigateTo('match');
+        }
+        MatchModule.advanceGame();
+        this.updateAdvanceButton();
     },
 
     startNewGame() {
@@ -63,6 +86,7 @@ const Game = {
 
         // 启用继续游戏按钮
         document.getElementById('load-game-btn').disabled = false;
+        this.updateAdvanceButton();
 
         // 跳转到球队页面
         Navigation.navigateTo('team');
@@ -76,6 +100,8 @@ const Game = {
             
             // 启动自动保存
             Storage.startAutoSave();
+
+            this.updateAdvanceButton();
             
             Navigation.navigateTo('team');
         }

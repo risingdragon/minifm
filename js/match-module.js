@@ -10,6 +10,11 @@ const MatchModule = {
             return;
         }
 
+        if (this.currentMatchResult) {
+            this.showMatchResult();
+            return;
+        }
+
         this.renderMatchInfo();
     },
 
@@ -45,11 +50,6 @@ const MatchModule = {
                         '<p style="color: var(--accent-color);">😢 遗憾降级到第' + (gameState.currentLeagueLevel + 1) + '级联赛</p>' :
                         '<p style="color: var(--text-light);">继续努力，争取下赛季升级！</p>'
                 }
-                    </div>
-                    <div class="mt-3">
-                        <button class="btn btn-primary btn-large" onclick="MatchModule.processSeasonEnd()">
-                            🏆 结算赛季并开始新赛季
-                        </button>
                     </div>
                 </div>
             `;
@@ -136,11 +136,6 @@ const MatchModule = {
                             <span class="player-info-label">预计胜率:</span>
                             <span class="player-info-value">${winChance}%</span>
                         </div>
-                        <div class="mt-3">
-                            <button class="btn btn-primary btn-large" onclick="MatchModule.playMatch()">
-                                ⚽ 进行比赛
-                            </button>
-                        </div>
                     `}
                 </div>
             </div>
@@ -186,6 +181,21 @@ const MatchModule = {
         const diff = playerAbility - opponentAbility + homeBonus;
         const winChance = 35 + diff * (0.5 / 11);
         return Math.max(5, Math.min(85, Math.round(winChance)));
+    },
+
+    advanceGame() {
+        if (this.currentMatchResult) {
+            this.closeMatchResult();
+            return;
+        }
+
+        const currentLeague = gameState.leagues.find(l => l.level === gameState.currentLeagueLevel);
+        if (currentLeague && currentLeague.currentRound > CONFIG.MATCHES_PER_SEASON) {
+            this.processSeasonEnd();
+            return;
+        }
+
+        this.playMatch();
     },
 
     playMatch() {
@@ -342,9 +352,6 @@ const MatchModule = {
             <div class="match-result-card ${resultClass}">
                 <div class="match-result-header">
                     <h3>比赛结束 - ${resultText}</h3>
-                    <button class="btn btn-primary" onclick="MatchModule.closeMatchResult()">
-                        ➡️ 继续
-                    </button>
                 </div>
                 <div class="match-score-display">
                     <div class="score-team">
@@ -663,4 +670,3 @@ const MatchModule = {
         gameState.transferMarket = DataGenerator.generateTransferMarket(gameState.currentLeagueLevel, 15);
     }
 };
-

@@ -105,6 +105,11 @@ body {
     font-weight: bold;
 }
 
+.header-advance-btn {
+    padding: 0.55rem 1.2rem;
+    white-space: nowrap;
+}
+
 /* ========================================
    主内容区域
    ======================================== */
