@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <title>极简足球经理</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
+
 <body>
     <div id="app">
         <!-- 头部导航 -->
@@ -35,7 +37,7 @@
                             管理球员、参与转会、指挥比赛、征战联赛！
                         </p>
                     </div>
-                    
+
                     <div class="action-buttons">
                         <button id="new-game-btn" class="btn btn-primary btn-large">
                             🎮 开始新游戏
@@ -64,27 +66,27 @@
                     <div id="team-details" class="details-card">
                         <p>请先开始新游戏</p>
                     </div>
-                    
+
                     <!-- 首发阵容区域 -->
                     <div class="lineup-section retro-panel">
                         <h3>阵型</h3>
                         <div class="lineup-field">
                             <div class="lineup-row">
-                                <div class="lineup-position-group" data-position="FWD">
+                                <div class="lineup-position-group" data-position="CF">
                                     <span class="position-label">前锋</span>
-                                    <div id="lineup-fwd" class="lineup-players"></div>
+                                    <div id="lineup-cf" class="lineup-players"></div>
                                 </div>
                             </div>
                             <div class="lineup-row">
-                                <div class="lineup-position-group" data-position="MID">
+                                <div class="lineup-position-group" data-position="MF">
                                     <span class="position-label">中场</span>
-                                    <div id="lineup-mid" class="lineup-players"></div>
+                                    <div id="lineup-mf" class="lineup-players"></div>
                                 </div>
                             </div>
                             <div class="lineup-row">
-                                <div class="lineup-position-group" data-position="DEF">
+                                <div class="lineup-position-group" data-position="DF">
                                     <span class="position-label">后卫</span>
-                                    <div id="lineup-def" class="lineup-players"></div>
+                                    <div id="lineup-df" class="lineup-players"></div>
                                 </div>
                             </div>
                             <div class="lineup-row">
@@ -95,7 +97,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="squad-section retro-panel">
                         <h3>阵容</h3>
                         <div id="squad-list" class="player-grid">
@@ -112,7 +114,7 @@
                     <div class="transfer-funds">
                         <h3>💰 可用资金: <span id="transfer-funds-value">¥0</span></h3>
                     </div>
-                    
+
                     <!-- 转会市场区域 -->
                     <div class="transfer-market">
                         <h2>转会市场 - 可购买球员</h2>
@@ -123,9 +125,9 @@
                                 <select id="position-filter" class="filter-select">
                                     <option value="all">全部位置</option>
                                     <option value="GK">门将</option>
-                                    <option value="DEF">后卫</option>
-                                    <option value="MID">中场</option>
-                                    <option value="FWD">前锋</option>
+                                    <option value="DF">后卫</option>
+                                    <option value="MF">中场</option>
+                                    <option value="CF">前锋</option>
                                 </select>
                             </div>
                             <div class="filter-group">
@@ -134,7 +136,7 @@
                                     <option value="all">全部能力</option>
                                     <option value="high">高能力 (80+)</option>
                                     <option value="medium">中等能力 (60-79)</option>
-                                    <option value="low">低能力 (<60)</option>
+                                    <option value="low">低能力 (<60)< /option>
                                 </select>
                             </div>
                             <div class="filter-group">
@@ -156,7 +158,7 @@
                             <p>暂无转会数据</p>
                         </div>
                     </div>
-                    
+
                     <!-- 出售球员区域 -->
                     <div class="sell-section">
                         <h2>出售球员 - 我的球队</h2>
@@ -165,7 +167,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- 购买确认模态框 -->
                 <div id="buy-modal" class="modal-overlay">
                     <div class="modal-content">
@@ -177,7 +179,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- 出售确认模态框 -->
                 <div id="sell-modal" class="modal-overlay">
                     <div class="modal-content">
@@ -235,4 +237,5 @@
     <script src="js/league-module.js"></script>
     <script src="js/main.js"></script>
 </body>
+
 </html>

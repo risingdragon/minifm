@@ -76,7 +76,7 @@ const MatchModule = {
             const opponentId = isHome ? nextMatch.awayTeam : nextMatch.homeTeam;
             const opponent = currentLeague.teams.find(t => t.id === opponentId);
             opponentName = opponent ? opponent.name : '未知对手';
-            opponentAbility = opponent ? opponent.getTeamAbility() : 50;
+            opponentAbility = opponent ? opponent.getTeamAbility() : 550;
             matchPlayed = nextMatch.played;
             if (matchPlayed) {
                 const playerScore = isHome ? nextMatch.homeScore : nextMatch.awayScore;
@@ -87,6 +87,16 @@ const MatchModule = {
 
         const playerAbility = gameState.playerTeam.getTeamAbility();
         const winChance = this.calculateWinChance(playerAbility, opponentAbility, isHome);
+
+        // 按主队在前、客队在后的顺序组织 match-preview
+        const homeTeam = {
+            name: isHome ? gameState.playerTeam.name : opponentName,
+            ability: isHome ? playerAbility : opponentAbility
+        };
+        const awayTeam = {
+            name: isHome ? opponentName : gameState.playerTeam.name,
+            ability: isHome ? opponentAbility : playerAbility
+        };
 
         const html = `
             <div class="details-card">
@@ -100,14 +110,14 @@ const MatchModule = {
                     <span class="player-info-value">第${gameState.currentLeagueLevel}级联赛</span>
                 </div>
                 <div class="match-preview">
-                    <div class="match-team ${isHome ? 'home' : 'away'}">
-                        <div class="team-name">${gameState.playerTeam.name}</div>
-                        <div class="team-ability">实力: ${playerAbility}</div>
+                    <div class="match-team home">
+                        <div class="team-name">${homeTeam.name}</div>
+                        <div class="team-ability">实力: ${homeTeam.ability}</div>
                     </div>
                     <div class="match-vs">VS</div>
-                    <div class="match-team ${isHome ? 'away' : 'home'}">
-                        <div class="team-name">${opponentName}</div>
-                        <div class="team-ability">实力: ${opponentAbility}</div>
+                    <div class="match-team away">
+                        <div class="team-name">${awayTeam.name}</div>
+                        <div class="team-ability">实力: ${awayTeam.ability}</div>
                     </div>
                 </div>
                 <div class="match-info-extra">
@@ -172,9 +182,9 @@ const MatchModule = {
     },
 
     calculateWinChance(playerAbility, opponentAbility, isHome) {
-        const homeBonus = isHome ? 10 : -10;
+        const homeBonus = isHome ? 110 : -110;
         const diff = playerAbility - opponentAbility + homeBonus;
-        const winChance = 35 + diff * 0.5;
+        const winChance = 35 + diff * (0.5 / 11);
         return Math.max(5, Math.min(85, Math.round(winChance)));
     },
 
@@ -330,7 +340,12 @@ const MatchModule = {
 
         const html = `
             <div class="match-result-card ${resultClass}">
-                <h3>比赛结束 - ${resultText}</h3>
+                <div class="match-result-header">
+                    <h3>比赛结束 - ${resultText}</h3>
+                    <button class="btn btn-primary" onclick="MatchModule.closeMatchResult()">
+                        ➡️ 继续
+                    </button>
+                </div>
                 <div class="match-score-display">
                     <div class="score-team">
                         <div class="team-name">${result.homeTeam.name}</div>
@@ -385,12 +400,6 @@ const MatchModule = {
                 <div class="match-events-list">
                     ${eventsHtml || '<p class="no-events">无重大事件</p>'}
                 </div>
-            </div>
-            
-            <div class="mt-3">
-                <button class="btn btn-primary" onclick="MatchModule.closeMatchResult()">
-                    确认
-                </button>
             </div>
         `;
 

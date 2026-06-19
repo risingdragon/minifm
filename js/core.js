@@ -11,26 +11,26 @@ const CONFIG = {
     LEAGUE_LEVELS: 6,
     TEAMS_PER_LEAGUE: 20,
     MATCHES_PER_SEASON: 38,
-    PLAYER_POSITIONS: ['GK', 'DEF', 'MID', 'FWD'],
+    PLAYER_POSITIONS: ['GK', 'DF', 'MF', 'CF'],
     POSITION_NAMES: {
         'GK': '门将',
-        'DEF': '后卫',
-        'MID': '中场',
-        'FWD': '前锋'
+        'DF': '后卫',
+        'MF': '中场',
+        'CF': '前锋'
     },
     // 首发阵容配置 (4-4-2阵型)
     STARTING_LINEUP: {
         'GK': 1,
-        'DEF': 4,
-        'MID': 4,
-        'FWD': 2
+        'DF': 4,
+        'MF': 4,
+        'CF': 2
     },
     // 阵容最小人数
     SQUAD_MIN_PLAYERS: {
         'GK': 2,
-        'DEF': 5,
-        'MID': 5,
-        'FWD': 3
+        'DF': 5,
+        'MF': 5,
+        'CF': 3
     },
     // 自动保存间隔（毫秒）
     AUTO_SAVE_INTERVAL: 30000,
@@ -53,7 +53,7 @@ class Player {
     constructor(data = {}) {
         this.id = data.id || this.generateId();
         this.name = data.name || '未知球员';
-        this.position = data.position || 'DEF';
+        this.position = data.position || 'DF';
         this.ability = data.ability || 50;
         this.age = data.age || 20;
         this.potential = Number.isFinite(data.potential) ? data.potential : this.generatePotential();
@@ -152,18 +152,21 @@ class Team {
     }
 
     getTeamAbility() {
+        if (!this.isPlayersLoaded) {
+            this.loadPlayers();
+        }
         if (this.players.length === 0) return 0;
         const lineupPlayers = this.startingLineup.map(id =>
             this.players.find(p => p.id === id)
         ).filter(p => p);
 
         if (lineupPlayers.length === 0) return 0;
-        return Math.floor(lineupPlayers.reduce((sum, p) => sum + p.ability, 0) / lineupPlayers.length);
+        return lineupPlayers.reduce((sum, p) => sum + p.ability, 0);
     }
 
     setDefaultLineup() {
         this.startingLineup = [];
-        const positions = ['GK', 'DEF', 'MID', 'FWD'];
+        const positions = ['GK', 'DF', 'MF', 'CF'];
 
         for (const pos of positions) {
             const count = CONFIG.STARTING_LINEUP[pos];

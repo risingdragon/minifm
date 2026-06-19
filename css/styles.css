@@ -891,6 +891,22 @@ body {
     color: var(--primary-color);
     margin-bottom: 1.5rem;
     font-size: 1.3rem;
+    margin: 0;
+}
+
+.match-result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.match-result-header h3 {
+    margin-bottom: 0;
+}
+
+.match-result-header .btn {
+    margin-bottom: 0;
 }
 
 .match-score-display {

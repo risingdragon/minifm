@@ -245,9 +245,9 @@ const TransferModule = {
         // 检查是否可以出售（需要保留最低阵容人数）
         const positionCounts = {
             'GK': players.filter(p => p.position === 'GK').length,
-            'DEF': players.filter(p => p.position === 'DEF').length,
-            'MID': players.filter(p => p.position === 'MID').length,
-            'FWD': players.filter(p => p.position === 'FWD').length
+            'DF': players.filter(p => p.position === 'DF').length,
+            'MF': players.filter(p => p.position === 'MF').length,
+            'CF': players.filter(p => p.position === 'CF').length
         };
 
         const html = players.map((player, index) => {

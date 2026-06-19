@@ -40,22 +40,19 @@ class MatchEngine {
         const lineup = this.getStartingLineup(team);
         if (lineup.length === 0) return 50;
 
-        // 前锋和中场对进攻贡献更大
-        const attackers = lineup.filter(p => p.position === 'FWD');
-        const midfielders = lineup.filter(p => p.position === 'MID');
+        const positionTotals = lineup.reduce((totals, player) => {
+            totals[player.position] = (totals[player.position] || 0) + player.ability;
+            return totals;
+        }, { GK: 0, DF: 0, MF: 0, CF: 0 });
 
-        let attackPower = 0;
-        if (attackers.length > 0) {
-            attackPower += attackers.reduce((sum, p) => sum + p.ability, 0) / attackers.length * 0.5;
-        }
-        if (midfielders.length > 0) {
-            attackPower += midfielders.reduce((sum, p) => sum + p.ability, 0) / midfielders.length * 0.3;
-        }
-        // 其他球员贡献
-        const others = lineup.filter(p => p.position !== 'FWD' && p.position !== 'MID');
-        if (others.length > 0) {
-            attackPower += others.reduce((sum, p) => sum + p.ability, 0) / others.length * 0.2;
-        }
+        // 使用总能力而非平均能力，让阵型人数直接影响攻防能力。
+        // 例如 433、442、451、352 会因为 CF/MF/DF 人数不同，自然产生不同攻防倾向。
+        const attackPower = (
+            positionTotals.CF * 0.45 +
+            positionTotals.MF * 0.35 +
+            positionTotals.DF * 0.15 +
+            positionTotals.GK * 0.05
+        ) / 11;
 
         return Math.min(200, Math.max(30, attackPower));
     }
@@ -65,22 +62,19 @@ class MatchEngine {
         const lineup = this.getStartingLineup(team);
         if (lineup.length === 0) return 50;
 
-        // 门将和后卫对防守贡献更大
-        const goalkeeper = lineup.filter(p => p.position === 'GK');
-        const defenders = lineup.filter(p => p.position === 'DEF');
+        const positionTotals = lineup.reduce((totals, player) => {
+            totals[player.position] = (totals[player.position] || 0) + player.ability;
+            return totals;
+        }, { GK: 0, DF: 0, MF: 0, CF: 0 });
 
-        let defensePower = 0;
-        if (goalkeeper.length > 0) {
-            defensePower += goalkeeper.reduce((sum, p) => sum + p.ability, 0) / goalkeeper.length * 0.4;
-        }
-        if (defenders.length > 0) {
-            defensePower += defenders.reduce((sum, p) => sum + p.ability, 0) / defenders.length * 0.4;
-        }
-        // 中场贡献
-        const midfielders = lineup.filter(p => p.position === 'MID');
-        if (midfielders.length > 0) {
-            defensePower += midfielders.reduce((sum, p) => sum + p.ability, 0) / midfielders.length * 0.2;
-        }
+        // 使用总能力而非平均能力，让阵型人数直接影响攻防能力。
+        // 例如 433、442、451、352 会因为 CF/MF/DF 人数不同，自然产生不同攻防倾向。
+        const defensePower = (
+            positionTotals.GK * 0.30 +
+            positionTotals.DF * 0.45 +
+            positionTotals.MF * 0.20 +
+            positionTotals.CF * 0.05
+        ) / 11;
 
         return Math.min(200, Math.max(30, defensePower));
     }
@@ -159,9 +153,9 @@ class MatchEngine {
 
         // 根据位置分配进球概率
         const goalProbabilities = {
-            'FWD': 0.5,   // 前锋 50%
-            'MID': 0.35,  // 中场 35%
-            'DEF': 0.14,  // 后卫 14%
+            'CF': 0.5,   // 前锋 50%
+            'MF': 0.35,  // 中场 35%
+            'DF': 0.14,  // 后卫 14%
             'GK': 0.01    // 门将 1%
         };
 
@@ -197,7 +191,7 @@ class MatchEngine {
                 const assistCandidates = lineup.filter(p => p.id !== scorer.id);
                 if (assistCandidates.length > 0) {
                     // 中场球员更容易助攻
-                    const midfielders = assistCandidates.filter(p => p.position === 'MID');
+                    const midfielders = assistCandidates.filter(p => p.position === 'MF');
                     if (midfielders.length > 0 && Math.random() < 0.6) {
                         assister = midfielders[Math.floor(Math.random() * midfielders.length)];
                     } else {
@@ -270,7 +264,7 @@ class MatchEngine {
         if (lineup.length === 0) return;
 
         // 后卫和中场更容易吃牌
-        const cardCandidates = lineup.filter(p => p.position === 'DEF' || p.position === 'MID');
+        const cardCandidates = lineup.filter(p => p.position === 'DF' || p.position === 'MF');
         const candidates = cardCandidates.length > 0 ? cardCandidates : lineup;
 
         const usedMinutes = this.events.map(e => e.minute);
@@ -320,7 +314,7 @@ class MatchEngine {
     // 计算中场实力
     calculateMidfieldPower(team) {
         const lineup = this.getStartingLineup(team);
-        const midfielders = lineup.filter(p => p.position === 'MID');
+        const midfielders = lineup.filter(p => p.position === 'MF');
         if (midfielders.length === 0) return 50;
         return midfielders.reduce((sum, p) => sum + p.ability, 0) / midfielders.length;
     }
@@ -335,13 +329,13 @@ class MatchEngine {
             awayTeam.loadPlayers();
         }
 
-        // 基于球队实力直接计算比分
+        // 基于球队实力直接计算比分（球队实力 = 首发能力总和）
         const homeAbility = homeTeam.getTeamAbility();
         const awayAbility = awayTeam.getTeamAbility();
 
         // 计算预期进球（泊松分布参数）
-        const homeExpectedGoals = (homeAbility / 150) * 1.5;  // 主场优势
-        const awayExpectedGoals = (awayAbility / 150) * 1.0;
+        const homeExpectedGoals = (homeAbility / 1650) * 1.5;  // 主场优势
+        const awayExpectedGoals = (awayAbility / 1650) * 1.0;
 
         // 使用泊松分布生成进球数
         const homeGoals = MatchEngine.poissonRandom(homeExpectedGoals);
@@ -356,4 +350,3 @@ class MatchEngine {
         };
     }
 }
-

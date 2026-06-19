@@ -105,19 +105,19 @@ const DataGenerator = {
         // 生成后卫（5-7人）
         const defCount = 5 + Math.floor(Math.random() * 3);
         for (let i = 0; i < defCount; i++) {
-            players.push(this.generatePlayer('DEF', leagueLevel));
+            players.push(this.generatePlayer('DF', leagueLevel));
         }
 
         // 生成中场（5-7人）
         const midCount = 5 + Math.floor(Math.random() * 3);
         for (let i = 0; i < midCount; i++) {
-            players.push(this.generatePlayer('MID', leagueLevel));
+            players.push(this.generatePlayer('MF', leagueLevel));
         }
 
         // 生成前锋（3-5人）
         const fwdCount = 3 + Math.floor(Math.random() * 3);
         for (let i = 0; i < fwdCount; i++) {
-            players.push(this.generatePlayer('FWD', leagueLevel));
+            players.push(this.generatePlayer('CF', leagueLevel));
         }
 
         return players;
@@ -354,7 +354,7 @@ const DataGenerator = {
     generateTransferMarket(leagueLevel, count = 10) {
         const players = [];
         for (let i = 0; i < count; i++) {
-            const positions = ['GK', 'DEF', 'MID', 'FWD'];
+            const positions = ['GK', 'DF', 'MF', 'CF'];
             const pos = positions[Math.floor(Math.random() * positions.length)];
             // 转会市场球员能力略高于当前联赛平均水平
             const player = this.generatePlayer(pos, Math.max(1, leagueLevel - 1));

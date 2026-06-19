@@ -10,7 +10,7 @@ const TeamModule = {
         if (!gameState.isInitialized) {
             document.getElementById('team-details').innerHTML = '<p>请先开始新游戏</p>';
             document.getElementById('squad-list').innerHTML = '<p>暂无球员数据</p>';
-            ['GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
+            ['GK', 'DF', 'MF', 'CF'].forEach(pos => {
                 const el = document.getElementById(`lineup-${pos.toLowerCase()}`);
                 if (el) el.innerHTML = '';
             });
@@ -76,7 +76,7 @@ const TeamModule = {
         const startingLineup = team.startingLineup;
 
         // 渲染各位置的首发球员
-        ['GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
+        ['GK', 'DF', 'MF', 'CF'].forEach(pos => {
             const el = document.getElementById(`lineup-${pos.toLowerCase()}`);
             if (!el) return;
 
@@ -139,7 +139,7 @@ const TeamModule = {
     // 排序球员列表
     sortPlayers(players) {
         const sortedPlayers = [...players];
-        const positionOrder = { 'GK': 1, 'DEF': 2, 'MID': 3, 'FWD': 4 };
+        const positionOrder = { 'GK': 1, 'DF': 2, 'MF': 3, 'CF': 4 };
 
         sortedPlayers.sort((a, b) => {
             let comparison = 0;
@@ -265,7 +265,7 @@ const TeamModule = {
             </table>
         `;
 
-        const positionLabels = { GK: 'GK', DEF: 'DF', MID: 'MF', FWD: 'CF' };
+        const positionLabels = { GK: 'GK', DF: 'DF', MF: 'MF', CF: 'CF' };
         const sortHeader = (field, label) => {
             const active = this.sortBy === field;
             const direction = active ? (this.sortOrder === 'asc' ? 'ascending' : 'descending') : 'none';
