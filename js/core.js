@@ -170,7 +170,9 @@ class Team {
 
         for (const pos of positions) {
             const count = CONFIG.STARTING_LINEUP[pos];
-            const posPlayers = this.players.filter(p => p.position === pos);
+            const posPlayers = this.players
+                .filter(p => p.position === pos)
+                .sort((a, b) => (b.ability || 0) - (a.ability || 0));
             for (let i = 0; i < count && i < posPlayers.length; i++) {
                 this.startingLineup.push(posPlayers[i].id);
             }

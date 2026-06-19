@@ -475,7 +475,6 @@ const MatchModule = {
 
         // 刷新界面
         this.render();
-        LeagueModule.currentViewLevel = gameState.currentLeagueLevel;
         LeagueModule.render();
         TeamModule.render();
     },
