@@ -42,11 +42,28 @@ const DataGenerator = {
 
     // 生成球员
     generatePlayer(position, leagueLevel = 1) {
-        // 根据联赛级别调整能力值范围
-        // 第1级联赛: 120-180, 第6级联赛: 50-100
-        const minAbility = 50 + (6 - leagueLevel) * 10;
-        const maxAbility = 100 + (6 - leagueLevel) * 16;
-        const ability = minAbility + Math.floor(Math.random() * (maxAbility - minAbility));
+        // 根据联赛级别从 CONFIG 中获取能力值范围（滑动区间，每级 50 个取值）
+        const range = CONFIG.LEAGUE_ABILITY_RANGES[leagueLevel] || CONFIG.LEAGUE_ABILITY_RANGES[6];
+        const minAbility = range.min;
+        const maxAbility = range.max;
+
+        // 联赛内部按金字塔分布抽样：能力越高，权重越小（平方反比）
+        // 对能力值 ability，其权重 = (maxAbility - ability + 1) ^ 2
+        // 例如 L1 (151-200)：ability=200 权重=1，ability=151 权重=2500
+        // 使用离散累积权重法：先在 [1, totalWeight] 内随机一个值，再反向定位
+        const rangeSize = maxAbility - minAbility + 1;
+        // 前 N 个平方和 = N*(N+1)*(2N+1)/6，作为 totalWeight
+        const totalWeight = rangeSize * (rangeSize + 1) * (2 * rangeSize + 1) / 6;
+        const pick = Math.floor(Math.random() * totalWeight) + 1;
+        let cumulative = 0;
+        let ability = maxAbility; // 从最高端开始累加（权重 1 对应最高值）
+        for (let i = 1; i <= rangeSize; i++) {
+            cumulative += i * i;
+            if (pick <= cumulative) {
+                ability = maxAbility - i + 1;
+                break;
+            }
+        }
 
         // 年龄分布：更倾向于年轻球员
         const ageRand = Math.random();

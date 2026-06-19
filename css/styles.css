@@ -1881,15 +1881,15 @@ body {
 }
 
 #team-page .lineup-players {
-    gap: 10px;
+    gap: 6px;
 }
 
 #team-page .lineup-player-card {
     position: relative;
-    min-width: 62px;
-    width: 70px;
-    min-height: 70px;
-    padding: 28px 6px 10px;
+    min-width: 46px;
+    width: 52px;
+    min-height: 52px;
+    padding: 20px 4px 8px;
     border: 0;
     border-radius: 0;
     background: url("../assets/lineup-jersey.png") center top / contain no-repeat;
@@ -1908,7 +1908,7 @@ body {
     z-index: 1;
     display: block;
     margin-top: 0;
-    font-size: 1.1rem;
+    font-size: 0.85rem;
     font-weight: 900;
     line-height: 1;
     text-shadow: 1px 1px 0 #6b000b, 0 0 4px rgba(255, 238, 0, 0.42);
@@ -1917,11 +1917,11 @@ body {
 #team-page .lineup-player-name {
     position: absolute;
     left: 50%;
-    top: calc(100% + 3px);
-    max-width: 86px;
+    top: calc(100% + 2px);
+    max-width: 68px;
     transform: translateX(-50%);
     color: #ffffff;
-    font-size: 0.64rem;
+    font-size: 0.56rem;
     text-shadow: 1px 1px 0 #000;
 }
 
