@@ -44,7 +44,6 @@ const LeagueModule = {
         const html = `
             <div class="details-card">
                 <h3>${viewLeague.name} - 第${viewLeague.season}赛季</h3>
-                <p>当前轮次: ${viewLeague.currentRound} / ${CONFIG.MATCHES_PER_SEASON}</p>
                 ${gameState.currentLeagueLevel > 1 ? '<p class="mt-2" style="color: var(--success-color);">⬆ 前3名升级到上一级联赛</p>' : ''}
                 ${gameState.currentLeagueLevel < CONFIG.LEAGUE_LEVELS ? '<p class="mt-2" style="color: var(--accent-color);">⬇ 后3名降级到下一级联赛</p>' : ''}
             </div>
