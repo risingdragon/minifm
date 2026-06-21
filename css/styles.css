@@ -1472,6 +1472,27 @@ body {
     min-width: 100px;
 }
 
+.lineup-suggestion-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+.lineup-suggestion-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.75rem;
+    background: var(--background-color);
+    border-radius: 8px;
+}
+
+.lineup-suggestion-item strong {
+    color: var(--primary-color);
+}
+
 /* 球员卡片按钮 */
 .player-card-actions {
     display: flex;

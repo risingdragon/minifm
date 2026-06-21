@@ -51,6 +51,7 @@ const TeamModule = {
     renderTeamInfo() {
         const team = gameState.playerTeam;
         const nextMatchText = this.getNextMatchText();
+        const health = Economy.getFinancialHealth(team, gameState.currentLeagueLevel);
 
         const retroDetailsHtml = `
             <div class="retro-scoreboard">
@@ -62,7 +63,8 @@ const TeamModule = {
                 </div>
                 <div class="club-meta">
                     <div><span>现在日期</span><strong>赛季 ${gameState.currentSeason} · 第 ${gameState.currentRound} 轮</strong></div>
-                    <div><span>流动资金</span><strong>£${team.funds.toLocaleString()}</strong></div>
+                    <div><span>流动资金</span><strong>${Economy.formatMoney(team.cash)}</strong></div>
+                    <div><span>财政健康</span><strong>${health.label} ${(health.ratio * 100).toFixed(0)}%</strong></div>
                     <div><span>下一场比赛</span><strong>${nextMatchText}</strong></div>
                 </div>
             </div>
@@ -253,8 +255,8 @@ const TeamModule = {
                                 <td class="ability-value">${player.ability}</td>
                                 <td class="potential-value">${player.potential}</td>
                                 <td>${player.age}岁</td>
-                                <td>¥${player.value.toLocaleString()}</td>
-                                <td>¥${player.wage.toLocaleString()}</td>
+                                <td>${Economy.formatMoney(player.value)}</td>
+                                <td>${Economy.formatMoney(player.wage)}/场</td>
                                 <td>${player.goals || 0}</td>
                                 <td>${player.assists || 0}</td>
                                 <td>${player.appearances || 0}</td>
@@ -302,8 +304,8 @@ const TeamModule = {
                                 <td class="ability-value">${player.ability}</td>
                                 <td class="potential-value">${player.potential}</td>
                                 <td>${player.age}</td>
-                                <td>£${player.value.toLocaleString()}</td>
-                                <td>£${player.wage.toLocaleString()}</td>
+                                <td>${Economy.formatMoney(player.value)}</td>
+                                <td>${Economy.formatMoney(player.wage)}/场</td>
                                 <td>${player.goals || 0}</td>
                                 <td>${player.assists || 0}</td>
                                 <td>${player.appearances || 0}</td>
@@ -369,11 +371,11 @@ const TeamModule = {
                                 </div>
                                 <div class="detail-item">
                                     <span class="detail-label">身价</span>
-                                    <span class="detail-value">¥${player.value.toLocaleString()}</span>
+                                    <span class="detail-value">${Economy.formatMoney(player.value)}</span>
                                 </div>
                                 <div class="detail-item">
                                     <span class="detail-label">周薪</span>
-                                    <span class="detail-value">¥${player.wage.toLocaleString()}</span>
+                                    <span class="detail-value">${Economy.formatMoney(player.wage)}/场</span>
                                 </div>
                             </div>
                         </div>
@@ -429,11 +431,11 @@ const TeamModule = {
         }
 
         // 确认出售
-        const confirmMsg = `确定要出售 ${player.name} 吗？\n出售价格: ¥${player.value.toLocaleString()}\n这将增加你的球队资金。`;
+        const confirmMsg = `确定要出售 ${player.name} 吗？\n出售价格: ${Economy.formatMoney(player.value)}\n这将增加你的球队资金。`;
         if (!confirm(confirmMsg)) return;
 
         // 执行出售
-        gameState.playerTeam.funds += player.value;
+        gameState.playerTeam.cash = Economy.roundMoney(gameState.playerTeam.cash + player.value);
 
         // 从球员列表中移除
         const playerIndex = gameState.playerTeam.players.findIndex(p => p.id === playerId);
@@ -465,6 +467,6 @@ const TeamModule = {
         // 刷新显示
         this.render();
 
-        alert(`成功出售 ${player.name}！获得 ¥${player.value.toLocaleString()}`);
+        alert(`成功出售 ${player.name}！获得 ${Economy.formatMoney(player.value)}`);
     }
 };

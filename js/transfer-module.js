@@ -19,12 +19,12 @@ const TransferModule = {
         if (!gameState.isInitialized) {
             document.getElementById('transfer-list').innerHTML = '<p>请先开始新游戏</p>';
             document.getElementById('sell-list').innerHTML = '<p>请先开始新游戏</p>';
-            document.getElementById('transfer-funds-value').textContent = '¥0';
+            document.getElementById('transfer-funds-value').textContent = '0万';
             return;
         }
 
         // 更新资金显示
-        document.getElementById('transfer-funds-value').textContent = `¥${gameState.playerTeam.funds.toLocaleString()}`;
+        document.getElementById('transfer-funds-value').textContent = Economy.formatMoney(gameState.playerTeam.cash);
 
         // 初始化筛选器事件
         this.initFilters();
@@ -173,12 +173,12 @@ const TransferModule = {
             return;
         }
 
-        const funds = gameState.playerTeam.funds;
+        const funds = gameState.playerTeam.cash;
 
         const html = filteredPlayers.map((player) => {
             // 找到球员在原始数组中的索引
             const originalIndex = gameState.transferMarket.findIndex(p => p.id === player.id);
-            const canAfford = funds >= player.value;
+            const canAfford = true;
 
             return `
                 <div class="player-card ${canAfford ? '' : 'insufficient'}">
@@ -197,11 +197,11 @@ const TransferModule = {
                     </div>
                     <div class="player-info">
                         <span class="player-info-label">身价:</span>
-                        <span class="player-info-value">¥${player.value.toLocaleString()}</span>
+                        <span class="player-info-value">${Economy.formatMoney(player.value)}</span>
                     </div>
                     <div class="player-info">
                         <span class="player-info-label">周薪:</span>
-                        <span class="player-info-value">¥${player.wage.toLocaleString()}</span>
+                        <span class="player-info-value">${Economy.formatMoney(player.wage)}/场</span>
                     </div>
                     ${canAfford ? '' : '<p class="insufficient-funds">⚠️ 资金不足</p>'}
                     <div class="player-card-actions">
@@ -272,11 +272,11 @@ const TransferModule = {
                     </div>
                     <div class="player-info">
                         <span class="player-info-label">身价:</span>
-                        <span class="player-info-value">¥${player.value.toLocaleString()}</span>
+                        <span class="player-info-value">${Economy.formatMoney(player.value)}</span>
                     </div>
                     <div class="player-info">
                         <span class="player-info-label">出售价格:</span>
-                        <span class="sell-price">¥${sellPrice.toLocaleString()}</span>
+                        <span class="sell-price">${Economy.formatMoney(sellPrice)}</span>
                     </div>
                     ${!canSell ? `<p class="insufficient-funds">⚠️ 该位置球员不足，无法出售</p>` : ''}
                     <div class="player-card-actions">
@@ -308,7 +308,7 @@ const TransferModule = {
         this.selectedPlayer = player;
         this.selectedPlayerIndex = index;
 
-        const funds = gameState.playerTeam.funds;
+        const funds = gameState.playerTeam.cash;
         const remainingFunds = funds - player.value;
 
         document.getElementById('buy-modal-title').textContent = '购买球员确认';
@@ -329,21 +329,21 @@ const TransferModule = {
                 </div>
                 <div class="player-info">
                     <span class="player-info-label">购买价格:</span>
-                    <span class="player-info-value" style="color: var(--accent-color); font-weight: bold;">¥${player.value.toLocaleString()}</span>
+                    <span class="player-info-value" style="color: var(--accent-color); font-weight: bold;">${Economy.formatMoney(player.value)}</span>
                 </div>
                 <div class="player-info">
                     <span class="player-info-label">周薪:</span>
-                    <span class="player-info-value">¥${player.wage.toLocaleString()}</span>
+                    <span class="player-info-value">${Economy.formatMoney(player.wage)}/场</span>
                 </div>
                 <hr style="margin: 1rem 0; border-color: var(--border-color);">
                 <div class="player-info">
                     <span class="player-info-label">当前资金:</span>
-                    <span class="player-info-value">¥${funds.toLocaleString()}</span>
+                    <span class="player-info-value">${Economy.formatMoney(funds)}</span>
                 </div>
                 <div class="player-info">
                     <span class="player-info-label">购买后剩余:</span>
                     <span class="player-info-value" style="color: ${remainingFunds >= 0 ? 'var(--success-color)' : 'var(--accent-color)'};">
-                        ¥${remainingFunds.toLocaleString()}
+                        ${Economy.formatMoney(remainingFunds)}
                     </span>
                 </div>
             </div>
@@ -366,32 +366,28 @@ const TransferModule = {
         const player = this.selectedPlayer;
         const index = this.selectedPlayerIndex;
 
-        if (gameState.playerTeam.funds >= player.value) {
-            // 扣除资金
-            gameState.playerTeam.funds -= player.value;
+        // 扣除资金，现金允许为负
+        gameState.playerTeam.cash = Economy.roundMoney(gameState.playerTeam.cash - player.value);
 
-            // 球员加入球队
-            gameState.playerTeam.players.push(player);
-            gameState.playerTeam.assignShirtNumbers();
+        // 球员加入球队
+        gameState.playerTeam.players.push(player);
+        gameState.playerTeam.assignShirtNumbers();
 
-            // 从转会市场移除
-            gameState.transferMarket.splice(index, 1);
+        // 从转会市场移除
+        gameState.transferMarket.splice(index, 1);
 
-            // 保存游戏
-            Storage.save(gameState);
+        // 保存游戏
+        Storage.save(gameState);
 
-            // 关闭模态框
-            this.closeBuyModal();
+        // 关闭模态框
+        this.closeBuyModal();
 
-            // 更新显示
-            this.render();
-            TeamModule.render();
+        // 更新显示
+        this.render();
+        TeamModule.render();
 
-            // 显示成功消息
-            this.showMessage(`成功签下 ${player.name}！花费 ¥${player.value.toLocaleString()}`, 'success');
-        } else {
-            this.showMessage('资金不足，无法购买！', 'error');
-        }
+        // 显示成功消息
+        this.showMessage(`成功签下 ${player.name}！花费 ${Economy.formatMoney(player.value)}`, 'success');
     },
 
     // 显示出售确认模态框
@@ -403,7 +399,7 @@ const TransferModule = {
         this.selectedSellPlayerIndex = index;
 
         const sellPrice = this.calculateSellPrice(player);
-        const funds = gameState.playerTeam.funds;
+        const funds = gameState.playerTeam.cash;
         const newFunds = funds + sellPrice;
 
         document.getElementById('sell-modal-title').textContent = '出售球员确认';
@@ -424,21 +420,21 @@ const TransferModule = {
                 </div>
                 <div class="player-info">
                     <span class="player-info-label">身价:</span>
-                    <span class="player-info-value">¥${player.value.toLocaleString()}</span>
+                    <span class="player-info-value">${Economy.formatMoney(player.value)}</span>
                 </div>
                 <div class="player-info">
                     <span class="player-info-label">出售价格:</span>
-                    <span class="player-info-value" style="color: var(--success-color); font-weight: bold;">¥${sellPrice.toLocaleString()}</span>
+                    <span class="player-info-value" style="color: var(--success-color); font-weight: bold;">${Economy.formatMoney(sellPrice)}</span>
                 </div>
                 <hr style="margin: 1rem 0; border-color: var(--border-color);">
                 <div class="player-info">
                     <span class="player-info-label">当前资金:</span>
-                    <span class="player-info-value">¥${funds.toLocaleString()}</span>
+                    <span class="player-info-value">${Economy.formatMoney(funds)}</span>
                 </div>
                 <div class="player-info">
                     <span class="player-info-label">出售后资金:</span>
                     <span class="player-info-value" style="color: var(--success-color); font-weight: bold;">
-                        ¥${newFunds.toLocaleString()}
+                        ${Economy.formatMoney(newFunds)}
                     </span>
                 </div>
             </div>
@@ -470,7 +466,7 @@ const TransferModule = {
         }
 
         // 增加资金
-        gameState.playerTeam.funds += sellPrice;
+        gameState.playerTeam.cash = Economy.roundMoney(gameState.playerTeam.cash + sellPrice);
 
         // 如果球员在首发阵容中，先移除
         const lineupIndex = gameState.playerTeam.startingLineup.indexOf(player.id);
@@ -492,7 +488,7 @@ const TransferModule = {
         TeamModule.render();
 
         // 显示成功消息
-        this.showMessage(`成功出售 ${player.name}！获得 ¥${sellPrice.toLocaleString()}`, 'success');
+        this.showMessage(`成功出售 ${player.name}！获得 ${Economy.formatMoney(sellPrice)}`, 'success');
     },
 
     // 显示消息提示

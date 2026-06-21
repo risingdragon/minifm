@@ -82,7 +82,7 @@ const Game = {
         // 启动自动保存
         Storage.startAutoSave();
 
-        alert(`新游戏已创建！\n你的球队"${gameState.playerTeam.name}"已加入第${gameState.currentLeagueLevel}级联赛。\n球队资金: ¥${gameState.playerTeam.funds.toLocaleString()}\n球员数量: ${gameState.playerTeam.players.length}人`);
+        alert(`新游戏已创建！\n你的球队"${gameState.playerTeam.name}"已加入第${gameState.currentLeagueLevel}级联赛。\n球队资金: ${Economy.formatMoney(gameState.playerTeam.cash)}\n球员数量: ${gameState.playerTeam.players.length}人`);
 
         // 启用继续游戏按钮
         document.getElementById('load-game-btn').disabled = false;

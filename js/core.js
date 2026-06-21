@@ -43,6 +43,56 @@ const CONFIG = {
         "4": { min: 61, max: 110 },
         "5": { min: 31, max: 80 },
         "6": { min: 1, max: 50 }
+    },
+    // 各级联赛球员潜力上限
+    LEAGUE_POTENTIAL_CAP: {
+        "1": 200,
+        "2": 180,
+        "3": 150,
+        "4": 120,
+        "5": 90,
+        "6": 60
+    },
+    ECONOMY: {
+        MATCH_INCOME: {
+            1: { home: 640, away: 320 },
+            2: { home: 320, away: 160 },
+            3: { home: 160, away: 80 },
+            4: { home: 80, away: 40 },
+            5: { home: 40, away: 20 },
+            6: { home: 20, away: 10 }
+        },
+        RANK_BONUS_BASE: [
+            { maxRank: 1, amount: 1000 },
+            { maxRank: 2, amount: 800 },
+            { maxRank: 3, amount: 600 },
+            { maxRank: 4, amount: 500 },
+            { maxRank: 5, amount: 400 },
+            { maxRank: 10, amount: 200 },
+            { maxRank: 20, amount: 100 }
+        ],
+        LEAGUE_BONUS_MULTIPLIER: {
+            1: 8,
+            2: 4,
+            3: 2,
+            4: 1,
+            5: 0.5,
+            6: 0.25
+        },
+        INITIAL_CASH: {
+            1: 10000,
+            2: 6000,
+            3: 3000,
+            4: 1500,
+            5: 700,
+            6: 300
+        },
+        AI_STYLES: [
+            { key: 'conservative', name: '保守型', weight: 35, salaryLimit: 0.50 },
+            { key: 'balanced', name: '平衡型', weight: 40, salaryLimit: 0.65 },
+            { key: 'promotion', name: '冲级型', weight: 20, salaryLimit: 0.85 },
+            { key: 'rich', name: '土豪型', weight: 5, salaryLimit: 1.20 }
+        ]
     }
 };
 
@@ -57,9 +107,12 @@ class Player {
         this.ability = data.ability || 50;
         this.age = data.age || 20;
         this.potential = Number.isFinite(data.potential) ? data.potential : this.generatePotential();
+        this.potential = Math.max(this.potential, this.ability);
+        this.potential = Math.min(200, this.potential);
+        this.contractYearsRemaining = Number.isFinite(data.contractYearsRemaining) ? data.contractYearsRemaining : Player.randomInt(1, 5);
         this.shirtNumber = Number.isInteger(data.shirtNumber) ? data.shirtNumber : null;
-        this.value = data.value || this.calculateValue();
-        this.wage = data.wage || this.calculateWage();
+        this.value = data.value && data.value < 100000 ? data.value : this.calculateValue();
+        this.wage = data.wage && data.wage < 1000 ? data.wage : this.calculateWage();
         this.goals = data.goals || 0;
         this.assists = data.assists || 0;
         this.appearances = data.appearances || 0;
@@ -69,28 +122,84 @@ class Player {
         return 'player_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     }
 
-    generatePotential() {
-        let growthRange = 5;
-        if (this.age <= 21) {
-            growthRange = 45;
-        } else if (this.age <= 25) {
-            growthRange = 30;
-        } else if (this.age <= 29) {
-            growthRange = 15;
+    generatePotential(minPotential = 1, maxPotential = 200) {
+        // 潜力的实际上下界：不能低于当前能力（潜力表示"未来巅峰"），不能超出 maxPotential
+        const floor = Math.max(this.ability, minPotential);
+        const ceiling = Math.min(200, Math.max(floor, maxPotential));
+
+        // 原有的分层分布（40-120、100-150、140-175、170-190、190-200），
+        // 但每一层的 min 被限制为 ≥ floor，max 被限制为 ≤ ceiling
+        // 当 ceiling 较低时，高端区间会被挤掉
+        const tiers = [
+            { max: Math.min(120, ceiling), min: Math.max(floor, 1), prob: 0.60 },
+            { max: Math.min(150, ceiling), min: Math.max(floor, 100), prob: 0.25 },
+            { max: Math.min(175, ceiling), min: Math.max(floor, 140), prob: 0.11 },
+            { max: Math.min(190, ceiling), min: Math.max(floor, 170), prob: 0.03 },
+            { max: Math.min(200, ceiling), min: Math.max(floor, 190), prob: 0.01 }
+        ];
+
+        // 过滤掉 min >= max 的分段，并归一化概率
+        const valid = [];
+        for (const t of tiers) {
+            if (t.min < t.max) valid.push(t);
+        }
+        const totalProb = valid.reduce((sum, t) => sum + t.prob, 0) || 1;
+
+        let roll = Math.random() * totalProb;
+        let potential = Player.randomInt(floor, ceiling);
+        for (const t of valid) {
+            roll -= t.prob;
+            if (roll <= 0) {
+                potential = Player.randomInt(t.min, t.max);
+                break;
+            }
         }
 
-        return Math.min(200, this.ability + Math.floor(Math.random() * (growthRange + 1)));
+        potential = Math.max(floor, potential);
+        potential = Math.min(ceiling, potential);
+        return potential;
+    }
+
+    static randomInt(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    static testPotentialDistribution(count = 10000) {
+        const total = Math.max(1, Math.floor(count));
+        const stats = {
+            total,
+            potential180Plus: 0,
+            potential190Plus: 0,
+            lowAbilityHighPotential: 0,
+            oldPlayerHighPotential: 0
+        };
+
+        for (let i = 0; i < total; i++) {
+            const player = new Player({
+                name: `测试球员${i + 1}`,
+                position: CONFIG.PLAYER_POSITIONS[i % CONFIG.PLAYER_POSITIONS.length],
+                ability: Player.randomInt(1, 200),
+                age: Player.randomInt(16, 40)
+            });
+
+            if (player.potential >= 180) stats.potential180Plus++;
+            if (player.potential >= 190) stats.potential190Plus++;
+            if (player.ability <= 50 && player.potential >= 180) stats.lowAbilityHighPotential++;
+            if (player.age >= 32 && player.potential >= 180) stats.oldPlayerHighPotential++;
+        }
+
+        console.log('潜力分布测试', stats);
+        return stats;
     }
 
     calculateValue() {
         // 身价 = 能力值 * 1000 * 年龄系数
-        const ageFactor = this.age < 25 ? 1.5 : (this.age < 30 ? 1.2 : 0.8);
-        return Math.floor(this.ability * 1000 * ageFactor);
+        return Economy.calculatePlayerValue(this);
     }
 
     calculateWage() {
         // 周薪 = 身价 / 52
-        return Math.floor(this.value / 52);
+        return Economy.calculatePlayerWage(this);
     }
 
     toJSON() {
@@ -100,6 +209,7 @@ class Player {
             position: this.position,
             ability: this.ability,
             potential: this.potential,
+            contractYearsRemaining: this.contractYearsRemaining,
             shirtNumber: this.shirtNumber,
             age: this.age,
             value: this.value,
@@ -112,17 +222,304 @@ class Player {
 }
 
 // ========================================
+// 球员成长/退化系统
+// ========================================
+const PlayerGrowth = {
+    BASE_GROWTH_CHANCE: 0.06,
+
+    applyPostMatchChange(team) {
+        if (!team || !Array.isArray(team.players)) return [];
+        const changes = [];
+
+        team.players.forEach(player => {
+            this.ensurePlayerFields(player);
+
+            const oldAbility = player.ability;
+            let type = null;
+            let chance = 0;
+
+            if (player.age <= 30) {
+                chance = this.calculateGrowthChance(player);
+                if (Math.random() < chance) {
+                    player.ability += 1;
+                    player.ability = Math.min(player.ability, player.potential, 200);
+                    type = player.ability > oldAbility ? 'growth' : null;
+                }
+            } else {
+                chance = this.getDeclineChance(player.age);
+                if (Math.random() < chance) {
+                    player.ability -= 1;
+                    player.ability = Math.max(1, player.ability);
+                    type = player.ability < oldAbility ? 'decline' : null;
+                }
+            }
+
+            if (type) {
+                this.recalculatePlayerEconomics(player);
+                changes.push({
+                    playerName: player.name,
+                    age: player.age,
+                    oldAbility,
+                    newAbility: player.ability,
+                    potential: player.potential,
+                    type,
+                    chance: Number(chance.toFixed(4))
+                });
+            }
+        });
+
+        return changes;
+    },
+
+    ensurePlayerFields(player) {
+        player.age = Number.isFinite(Number(player.age)) ? Number(player.age) : 20;
+        player.ability = Number.isFinite(Number(player.ability)) ? Number(player.ability) : 1;
+        player.ability = this.clamp(Math.round(player.ability), 1, 200);
+
+        const existingPotential = Number(player.potential || player.ability);
+        player.potential = Number.isFinite(existingPotential) ? existingPotential : player.ability;
+        player.potential = this.clamp(Math.round(Math.max(player.potential, player.ability)), 1, 200);
+    },
+
+    calculateGrowthChance(player) {
+        if (player.age > 30 || player.potential <= player.ability) return 0;
+
+        const potentialGap = player.potential - player.ability;
+        const ageFactor = this.getAgeGrowthFactor(player.age);
+        const potentialGapFactor = this.clamp(potentialGap / 50, 0.2, 1.5);
+        const lowAbilityBoost = this.getLowAbilityBoost(player.ability);
+        const randomVariance = 0.85 + Math.random() * 0.30;
+
+        const growthChance = this.BASE_GROWTH_CHANCE *
+            ageFactor *
+            potentialGapFactor *
+            lowAbilityBoost *
+            randomVariance;
+
+        return this.clamp(growthChance, 0, 0.30);
+    },
+
+    getAgeGrowthFactor(age) {
+        if (age <= 18) return 2.5;
+        if (age <= 21) return 1.8;
+        if (age <= 24) return 1.2;
+        if (age <= 27) return 0.6;
+        if (age <= 30) return 0.2;
+        return 0;
+    },
+
+    getLowAbilityBoost(ability) {
+        if (ability <= 30) return 2.0;
+        if (ability <= 60) return 1.6;
+        if (ability <= 90) return 1.3;
+        if (ability <= 120) return 1.1;
+        return 1.0;
+    },
+
+    getDeclineChance(age) {
+        if (age < 31) return 0;
+        return Math.min(0.08, 0.01 + (age - 31) * 0.01);
+    },
+
+    applyEndSeasonAging(players) {
+        if (!Array.isArray(players)) return;
+        players.forEach(player => {
+            this.ensurePlayerFields(player);
+            player.age += 1;
+            player.contractYearsRemaining = Math.max(0, (Number(player.contractYearsRemaining) || 0) - 1);
+            this.recalculatePlayerEconomics(player);
+        });
+    },
+
+    testGrowthAndDeclineSimulation() {
+        const samples = [
+            { age: 16, ability: 1, potential: 200 },
+            { age: 18, ability: 80, potential: 170 },
+            { age: 21, ability: 120, potential: 160 },
+            { age: 25, ability: 140, potential: 170 },
+            { age: 29, ability: 150, potential: 170 },
+            { age: 31, ability: 150, potential: 180 },
+            { age: 35, ability: 150, potential: 180 },
+            { age: 38, ability: 130, potential: 180 }
+        ];
+
+        const players = samples.map((data, index) => new Player({
+            name: `成长测试${index + 1}`,
+            position: CONFIG.PLAYER_POSITIONS[index % CONFIG.PLAYER_POSITIONS.length],
+            ...data
+        }));
+        const team = { players };
+        const before = players.map(player => player.ability);
+
+        for (let match = 0; match < CONFIG.MATCHES_PER_SEASON; match++) {
+            this.applyPostMatchChange(team);
+        }
+
+        const result = players.map((player, index) => ({
+            age: player.age,
+            abilityBefore: before[index],
+            abilityAfter: player.ability,
+            potential: player.potential,
+            totalChange: player.ability - before[index]
+        }));
+
+        console.log('成长/退化模拟测试', result);
+        return result;
+    },
+
+    recalculatePlayerEconomics(player) {
+        if (typeof player.calculateValue === 'function') {
+            player.value = player.calculateValue();
+        }
+        if (typeof player.calculateWage === 'function') {
+            player.wage = player.calculateWage();
+        }
+    },
+
+    clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+    }
+};
+
+// ========================================
 // 球队数据模型
 // ========================================
+const Economy = {
+    random(min, max) {
+        return min + Math.random() * (max - min);
+    },
+
+    roundMoney(amount) {
+        return Number((Number(amount || 0)).toFixed(1));
+    },
+
+    formatMoney(amount) {
+        const rounded = this.roundMoney(amount);
+        return `${rounded.toLocaleString()}万`;
+    },
+
+    calculatePlayerWage(player) {
+        const ability = Math.max(1, Number(player && player.ability) || 1);
+        const salary = Math.max(0.1, 0.1 * Math.pow(ability / 10, 2.2));
+        return this.roundMoney(salary * this.random(0.8, 1.2));
+    },
+
+    calculatePlayerValue(player) {
+        const ability = Math.max(1, Number(player && player.ability) || 1);
+        const potential = Math.max(ability, Number(player && player.potential) || ability);
+        const age = Number(player && player.age) || 24;
+        const contractYears = Math.max(0, Math.min(5, Number(player && player.contractYearsRemaining) || 1));
+
+        let ageFactor = 1;
+        if (age <= 20) ageFactor = 1.55;
+        else if (age <= 24) ageFactor = 1.35;
+        else if (age <= 28) ageFactor = 1.1;
+        else if (age <= 31) ageFactor = 0.85;
+        else if (age <= 34) ageFactor = 0.6;
+        else ageFactor = 0.35;
+
+        const potentialFactor = Math.max(0.75, Math.min(1.8, 0.75 + (potential - ability) / 120));
+        const contractFactor = contractYears <= 0 ? 0.35 : contractYears === 1 ? 0.55 : contractYears === 2 ? 0.8 : 1;
+        return Math.max(1, Math.round(ability * ability * 0.04 * ageFactor * potentialFactor * contractFactor));
+    },
+
+    pickAiStyle() {
+        const styles = CONFIG.ECONOMY.AI_STYLES;
+        const totalWeight = styles.reduce((sum, style) => sum + style.weight, 0);
+        let roll = Math.random() * totalWeight;
+        for (const style of styles) {
+            roll -= style.weight;
+            if (roll <= 0) return style.key;
+        }
+        return 'balanced';
+    },
+
+    getMatchIncome(leagueLevel, isHome) {
+        const table = CONFIG.ECONOMY.MATCH_INCOME[leagueLevel] || CONFIG.ECONOMY.MATCH_INCOME[6];
+        return isHome ? table.home : table.away;
+    },
+
+    getSquadSalary(team) {
+        if (!team || !Array.isArray(team.players)) return 0;
+        return this.roundMoney(team.players.reduce((sum, player) => sum + (Number(player.wage) || 0.1), 0));
+    },
+
+    settleMatch(team, leagueLevel, isHome) {
+        if (!team) return null;
+        const matchIncome = this.getMatchIncome(leagueLevel, isHome);
+        const squadSalary = this.getSquadSalary(team);
+        team.cash = this.roundMoney((Number(team.cash) || 0) + matchIncome - squadSalary);
+        team.negativeCashRounds = team.cash < 0 ? (team.negativeCashRounds || 0) + 1 : 0;
+        return {
+            matchIncome,
+            squadSalary,
+            netIncome: this.roundMoney(matchIncome - squadSalary),
+            cashAfter: team.cash
+        };
+    },
+
+    getRankBonus(rank, leagueLevel) {
+        const base = CONFIG.ECONOMY.RANK_BONUS_BASE.find(row => rank <= row.maxRank);
+        if (!base) return 0;
+        return this.roundMoney(base.amount * (CONFIG.ECONOMY.LEAGUE_BONUS_MULTIPLIER[leagueLevel] || 1));
+    },
+
+    settleSeasonBonus(team, rank, leagueLevel) {
+        if (!team) return 0;
+        const bonus = this.getRankBonus(rank, leagueLevel);
+        team.cash = this.roundMoney((Number(team.cash) || 0) + bonus);
+        return bonus;
+    },
+
+    getAnnualIncomeEstimate(leagueLevel) {
+        const table = CONFIG.ECONOMY.MATCH_INCOME[leagueLevel] || CONFIG.ECONOMY.MATCH_INCOME[6];
+        return (table.home * 19) + (table.away * 19) + this.getRankBonus(10, leagueLevel);
+    },
+
+    getSalaryRatio(team, leagueLevel) {
+        return (this.getSquadSalary(team) * CONFIG.MATCHES_PER_SEASON) / Math.max(1, this.getAnnualIncomeEstimate(leagueLevel));
+    },
+
+    getFinancialHealth(team, leagueLevel) {
+        const ratio = this.getSalaryRatio(team, leagueLevel);
+        if (ratio < 0.4) return { ratio, level: 'lean', label: '节制' };
+        if (ratio <= 0.6) return { ratio, level: 'healthy', label: '健康' };
+        if (ratio <= 0.8) return { ratio, level: 'warning', label: '危险' };
+        return { ratio, level: 'crisis', label: '危机' };
+    },
+
+    handleFinancialCrisis(team) {
+        if (!team || team.isPlayerTeam || !Array.isArray(team.players) || (team.negativeCashRounds || 0) < 6) return [];
+        team.financialCrisisLevel = Math.min(3, Math.floor((team.negativeCashRounds || 0) / 6));
+        if (team.financialCrisisLevel < 3 || team.players.length <= 18) return [];
+
+        const player = [...team.players].sort((a, b) =>
+            ((b.wage || 0) - (a.wage || 0)) || ((b.age || 0) - (a.age || 0))
+        )[0];
+        if (!player) return [];
+
+        const fee = Math.max(1, Math.round((player.value || this.calculatePlayerValue(player)) * 0.75));
+        team.players = team.players.filter(item => item.id !== player.id);
+        team.startingLineup = (team.startingLineup || []).filter(id => id !== player.id);
+        team.cash = this.roundMoney((Number(team.cash) || 0) + fee);
+        if (typeof team.setDefaultLineup === 'function') team.setDefaultLineup();
+        return [{ type: 'forcedSale', playerName: player.name, fee }];
+    }
+};
+
 class Team {
     constructor(data = {}) {
         this.id = data.id || Team.generateId();
         this.name = data.name || '未命名球队';
-        this.funds = data.funds || 5000000;
+        const storedCash = Number.isFinite(data.cash) ? data.cash : (Number.isFinite(data.funds) ? data.funds : 300);
+        this.cash = storedCash > 100000 ? Economy.roundMoney(storedCash / 10000) : storedCash;
         this.players = data.players || [];
         this.startingLineup = data.startingLineup || [];
         this.leagueLevel = data.leagueLevel || 6;
         this.isPlayerTeam = data.isPlayerTeam || false;
+        this.aiStyle = data.aiStyle || (this.isPlayerTeam ? 'player' : Economy.pickAiStyle());
+        this.negativeCashRounds = data.negativeCashRounds || 0;
+        this.financialCrisisLevel = data.financialCrisisLevel || 0;
         this.stats = data.stats || {
             played: 0,
             won: 0,
@@ -145,6 +542,14 @@ class Team {
     // 静态方法：生成球队ID
     static generateId() {
         return 'team_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    get funds() {
+        return this.cash;
+    }
+
+    set funds(value) {
+        this.cash = value;
     }
 
     getTeamValue() {
@@ -262,10 +667,14 @@ class Team {
             id: this.id,
             name: this.name,
             funds: this.funds,
+            cash: this.cash,
             players: this.isPlayersLoaded ? this.players.map(p => p.toJSON ? p.toJSON() : p) : [],
             startingLineup: this.startingLineup,
             leagueLevel: this.leagueLevel,
             isPlayerTeam: this.isPlayerTeam,
+            aiStyle: this.aiStyle,
+            negativeCashRounds: this.negativeCashRounds,
+            financialCrisisLevel: this.financialCrisisLevel,
             stats: this.stats,
             isPlayersLoaded: this.isPlayersLoaded,
             playersData: this.isPlayersLoaded ? null : (this.players.map(p => p.toJSON ? p.toJSON() : p) || this.playersData)
@@ -298,22 +707,22 @@ class League {
             return;
         }
 
-        this.schedule = [];
         const teamCount = this.teams.length;
-        const totalRounds = (teamCount - 1) * 2; // 38轮
         const matchesPerRound = teamCount / 2;
+        const firstHalfRounds = [];
 
-        // 使用循环赛算法生成赛程
-        // 创建球队索引数组
+        // 使用循环赛算法生成基础对阵，并交替主客场，避免固定球队连续主/客场。
         let teamIndices = Array.from({ length: teamCount }, (_, i) => i);
 
-        // 第一循环（主场）
         for (let round = 0; round < teamCount - 1; round++) {
             const roundMatches = [];
 
             for (let match = 0; match < matchesPerRound; match++) {
-                const home = teamIndices[match];
-                const away = teamIndices[teamCount - 1 - match];
+                const left = teamIndices[match];
+                const right = teamIndices[teamCount - 1 - match];
+                const shouldFlipHome = (round + match) % 2 === 1;
+                const home = shouldFlipHome ? right : left;
+                const away = shouldFlipHome ? left : right;
 
                 roundMatches.push({
                     homeTeam: this.teams[home].id,
@@ -324,33 +733,32 @@ class League {
                 });
             }
 
-            this.schedule.push({
-                round: round + 1,
-                matches: roundMatches
-            });
+            firstHalfRounds.push(roundMatches);
 
             // 轮转球队位置（保持第一个位置不变）
             teamIndices = [teamIndices[0], ...teamIndices.slice(2), teamIndices[1]];
         }
 
-        // 第二循环（交换主客场）
-        for (let round = 0; round < teamCount - 1; round++) {
-            const roundMatches = [];
-            const firstHalfRound = this.schedule[round].matches;
+        this.schedule = [];
 
-            for (const match of firstHalfRound) {
-                roundMatches.push({
+        // 前半程先踢完所有对手一次，后半程再反转主客场。
+        for (let round = 0; round < teamCount - 1; round++) {
+            this.schedule.push({
+                round: round + 1,
+                matches: firstHalfRounds[round]
+            });
+        }
+
+        for (let round = 0; round < teamCount - 1; round++) {
+            this.schedule.push({
+                round: teamCount + round,
+                matches: firstHalfRounds[round].map(match => ({
                     homeTeam: match.awayTeam,
                     awayTeam: match.homeTeam,
                     homeScore: null,
                     awayScore: null,
                     played: false
-                });
-            }
-
-            this.schedule.push({
-                round: teamCount + round,
-                matches: roundMatches
+                }))
             });
         }
     }

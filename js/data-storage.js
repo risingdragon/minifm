@@ -85,6 +85,11 @@ const DataGenerator = {
             age: age
         });
 
+        // 根据联赛级别重新计算潜力（受到联赛能力下限与潜力上限限制）
+        const range2 = CONFIG.LEAGUE_ABILITY_RANGES[leagueLevel] || CONFIG.LEAGUE_ABILITY_RANGES[6];
+        const cap = CONFIG.LEAGUE_POTENTIAL_CAP[leagueLevel] || CONFIG.LEAGUE_POTENTIAL_CAP[6];
+        player.potential = player.generatePotential(range2.min, cap);
+
         // 根据能力值和年龄重新计算身价
         player.value = player.calculateValue();
         player.wage = player.calculateWage();
@@ -97,25 +102,25 @@ const DataGenerator = {
         const players = [];
 
         // 生成门将（2-3人）
-        const gkCount = 2 + Math.floor(Math.random() * 2);
+        const gkCount = 3;
         for (let i = 0; i < gkCount; i++) {
             players.push(this.generatePlayer('GK', leagueLevel));
         }
 
         // 生成后卫（5-7人）
-        const defCount = 5 + Math.floor(Math.random() * 3);
+        const defCount = 8;
         for (let i = 0; i < defCount; i++) {
             players.push(this.generatePlayer('DF', leagueLevel));
         }
 
         // 生成中场（5-7人）
-        const midCount = 5 + Math.floor(Math.random() * 3);
+        const midCount = 8;
         for (let i = 0; i < midCount; i++) {
             players.push(this.generatePlayer('MF', leagueLevel));
         }
 
         // 生成前锋（3-5人）
-        const fwdCount = 3 + Math.floor(Math.random() * 3);
+        const fwdCount = 6;
         for (let i = 0; i < fwdCount; i++) {
             players.push(this.generatePlayer('CF', leagueLevel));
         }
@@ -126,21 +131,14 @@ const DataGenerator = {
     // 生成球队
     generateTeam(name, leagueLevel, isPlayerTeam = false, lazyLoad = false) {
         // 根据联赛级别设置初始资金
-        const baseFunds = 5000000;
-        const fundsByLevel = {
-            1: baseFunds * 10,
-            2: baseFunds * 6,
-            3: baseFunds * 4,
-            4: baseFunds * 2.5,
-            5: baseFunds * 1.5,
-            6: baseFunds
-        };
+        const fundsByLevel = CONFIG.ECONOMY.INITIAL_CASH;
 
         if (lazyLoad) {
             // 懒加载模式：只含基本信息，不生成球员
             const team = new Team({
                 name: name,
-                funds: fundsByLevel[leagueLevel] || baseFunds,
+                funds: fundsByLevel[leagueLevel] || fundsByLevel[6],
+                cash: fundsByLevel[leagueLevel] || fundsByLevel[6],
                 players: [],
                 leagueLevel: leagueLevel,
                 isPlayerTeam: isPlayerTeam,
@@ -153,7 +151,8 @@ const DataGenerator = {
             const players = this.generateTeamPlayers(leagueLevel);
             const team = new Team({
                 name: name,
-                funds: fundsByLevel[leagueLevel] || baseFunds,
+                funds: fundsByLevel[leagueLevel] || fundsByLevel[6],
+                cash: fundsByLevel[leagueLevel] || fundsByLevel[6],
                 players: players,
                 leagueLevel: leagueLevel,
                 isPlayerTeam: isPlayerTeam,
@@ -224,6 +223,8 @@ const DataGenerator = {
                     const teamData = {
                         id: Team.generateId(),
                         name: teamName,
+                        funds: CONFIG.ECONOMY.INITIAL_CASH[level] || CONFIG.ECONOMY.INITIAL_CASH[6],
+                        cash: CONFIG.ECONOMY.INITIAL_CASH[level] || CONFIG.ECONOMY.INITIAL_CASH[6],
                         leagueLevel: level,
                         isPlayerTeam: false,
                         isPlayersLoaded: false,
@@ -286,6 +287,8 @@ const DataGenerator = {
                 teamsData.push({
                     id: teamId,
                     name: teamName,
+                    funds: CONFIG.ECONOMY.INITIAL_CASH[level] || CONFIG.ECONOMY.INITIAL_CASH[6],
+                    cash: CONFIG.ECONOMY.INITIAL_CASH[level] || CONFIG.ECONOMY.INITIAL_CASH[6],
                     leagueLevel: level,
                     isPlayerTeam: false,
                     isPlayersLoaded: false,
@@ -413,6 +416,14 @@ const Storage = {
 
             if (parsed.transferMarket) {
                 parsed.transferMarket = parsed.transferMarket.map(p => new Player(p));
+            }
+
+            if (parsed.playerTeam && parsed.leagues) {
+                const playerLeague = parsed.leagues.find(l => l.level === parsed.currentLeagueLevel);
+                const linkedPlayerTeam = playerLeague && playerLeague.teams.find(t => t.id === parsed.playerTeam.id);
+                if (linkedPlayerTeam) {
+                    parsed.playerTeam = linkedPlayerTeam;
+                }
             }
 
             parsed.isInitialized = true;
