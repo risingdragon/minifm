@@ -92,7 +92,7 @@ const DataGenerator = {
 
         // 根据能力值和年龄重新计算身价
         player.value = player.calculateValue();
-        player.wage = player.calculateWage();
+        Economy.signContract(player, player.contractYears);
 
         return player;
     },

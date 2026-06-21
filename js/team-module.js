@@ -51,7 +51,6 @@ const TeamModule = {
     renderTeamInfo() {
         const team = gameState.playerTeam;
         const nextMatchText = this.getNextMatchText();
-        const health = Economy.getFinancialHealth(team, gameState.currentLeagueLevel);
 
         const retroDetailsHtml = `
             <div class="retro-scoreboard">
@@ -64,7 +63,6 @@ const TeamModule = {
                 <div class="club-meta">
                     <div><span>现在日期</span><strong>赛季 ${gameState.currentSeason} · 第 ${gameState.currentRound} 轮</strong></div>
                     <div><span>流动资金</span><strong>${Economy.formatMoney(team.cash)}</strong></div>
-                    <div><span>财政健康</span><strong>${health.label} ${(health.ratio * 100).toFixed(0)}%</strong></div>
                     <div><span>下一场比赛</span><strong>${nextMatchText}</strong></div>
                 </div>
             </div>
@@ -165,7 +163,7 @@ const TeamModule = {
             } else if (this.sortBy === 'value') {
                 comparison = a.value - b.value;
             } else if (this.sortBy === 'wage') {
-                comparison = a.wage - b.wage;
+                comparison = (a.salary || a.wage || 0) - (b.salary || b.wage || 0);
             } else if (this.sortBy === 'goals') {
                 comparison = (a.goals || 0) - (b.goals || 0);
             } else if (this.sortBy === 'assists') {
@@ -232,8 +230,8 @@ const TeamModule = {
                         <th>能力值</th>
                         <th>潜力</th>
                         <th>年龄</th>
-                        <th>身价</th>
-                        <th>周薪</th>
+                        <th>身价(万元)</th>
+                        <th>周薪(万元)</th>
                         <th>进球</th>
                         <th>助攻</th>
                         <th>出场</th>
@@ -255,8 +253,8 @@ const TeamModule = {
                                 <td class="ability-value">${player.ability}</td>
                                 <td class="potential-value">${player.potential}</td>
                                 <td>${player.age}岁</td>
-                                <td>${Economy.formatMoney(player.value)}</td>
-                                <td>${Economy.formatMoney(player.wage)}/场</td>
+                                <td>${Economy.roundMoney(player.value).toLocaleString()}</td>
+                                <td>${Economy.roundMoney(player.salary || player.wage).toLocaleString()}</td>
                                 <td>${player.goals || 0}</td>
                                 <td>${player.assists || 0}</td>
                                 <td>${player.appearances || 0}</td>
@@ -285,8 +283,8 @@ const TeamModule = {
                         ${sortHeader('ability', '能力')}
                         ${sortHeader('potential', '潜力')}
                         ${sortHeader('age', '年龄')}
-                        ${sortHeader('value', '身价')}
-                        ${sortHeader('wage', '周薪')}
+                        ${sortHeader('value', '身价(万元)')}
+                        ${sortHeader('wage', '周薪(万元)')}
                         ${sortHeader('goals', '进球')}
                         ${sortHeader('assists', '助攻')}
                         ${sortHeader('appearances', '出场')}
@@ -304,8 +302,8 @@ const TeamModule = {
                                 <td class="ability-value">${player.ability}</td>
                                 <td class="potential-value">${player.potential}</td>
                                 <td>${player.age}</td>
-                                <td>${Economy.formatMoney(player.value)}</td>
-                                <td>${Economy.formatMoney(player.wage)}/场</td>
+                                <td>${Economy.roundMoney(player.value).toLocaleString()}</td>
+                                <td>${Economy.roundMoney(player.salary || player.wage).toLocaleString()}</td>
                                 <td>${player.goals || 0}</td>
                                 <td>${player.assists || 0}</td>
                                 <td>${player.appearances || 0}</td>
@@ -375,7 +373,7 @@ const TeamModule = {
                                 </div>
                                 <div class="detail-item">
                                     <span class="detail-label">周薪</span>
-                                    <span class="detail-value">${Economy.formatMoney(player.wage)}/场</span>
+                                    <span class="detail-value">${Economy.formatMoney(player.salary || player.wage)}</span>
                                 </div>
                             </div>
                         </div>

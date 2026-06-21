@@ -201,7 +201,7 @@ const TransferModule = {
                     </div>
                     <div class="player-info">
                         <span class="player-info-label">周薪:</span>
-                        <span class="player-info-value">${Economy.formatMoney(player.wage)}/场</span>
+                        <span class="player-info-value">${Economy.formatMoney(player.salary || player.wage)}</span>
                     </div>
                     ${canAfford ? '' : '<p class="insufficient-funds">⚠️ 资金不足</p>'}
                     <div class="player-card-actions">
@@ -333,7 +333,7 @@ const TransferModule = {
                 </div>
                 <div class="player-info">
                     <span class="player-info-label">周薪:</span>
-                    <span class="player-info-value">${Economy.formatMoney(player.wage)}/场</span>
+                    <span class="player-info-value">${Economy.formatMoney(player.salary || player.wage)}</span>
                 </div>
                 <hr style="margin: 1rem 0; border-color: var(--border-color);">
                 <div class="player-info">

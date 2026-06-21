@@ -109,10 +109,14 @@ class Player {
         this.potential = Number.isFinite(data.potential) ? data.potential : this.generatePotential();
         this.potential = Math.max(this.potential, this.ability);
         this.potential = Math.min(200, this.potential);
-        this.contractYearsRemaining = Number.isFinite(data.contractYearsRemaining) ? data.contractYearsRemaining : Player.randomInt(1, 5);
+        const savedContractYears = Number.isFinite(data.contractYears) ? data.contractYears : data.contractYearsRemaining;
+        this.contractYears = Number.isFinite(savedContractYears) ? savedContractYears : Player.generateContractYears(this.age);
+        this.contractYearsRemaining = this.contractYears;
         this.shirtNumber = Number.isInteger(data.shirtNumber) ? data.shirtNumber : null;
         this.value = data.value && data.value < 100000 ? data.value : this.calculateValue();
-        this.wage = data.wage && data.wage < 1000 ? data.wage : this.calculateWage();
+        const legacyWage = data.wage && data.wage < 1000 ? data.wage : null;
+        this.salary = data.salary && data.salary < 1000 ? data.salary : (legacyWage || this.calculateSalary());
+        this.wage = this.salary;
         this.goals = data.goals || 0;
         this.assists = data.assists || 0;
         this.appearances = data.appearances || 0;
@@ -164,6 +168,13 @@ class Player {
         return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 
+    static generateContractYears(age) {
+        if (age <= 20) return Player.randomInt(4, 5);
+        if (age <= 27) return Player.randomInt(3, 5);
+        if (age <= 32) return Player.randomInt(2, 4);
+        return Player.randomInt(1, 2);
+    }
+
     static testPotentialDistribution(count = 10000) {
         const total = Math.max(1, Math.floor(count));
         const stats = {
@@ -197,9 +208,13 @@ class Player {
         return Economy.calculatePlayerValue(this);
     }
 
+    calculateSalary() {
+        return Economy.calculateSalary(this.ability);
+    }
+
     calculateWage() {
         // 周薪 = 身价 / 52
-        return Economy.calculatePlayerWage(this);
+        return this.calculateSalary();
     }
 
     toJSON() {
@@ -209,10 +224,12 @@ class Player {
             position: this.position,
             ability: this.ability,
             potential: this.potential,
+            contractYears: this.contractYears,
             contractYearsRemaining: this.contractYearsRemaining,
             shirtNumber: this.shirtNumber,
             age: this.age,
             value: this.value,
+            salary: this.salary,
             wage: this.wage,
             goals: this.goals,
             assists: this.assists,
@@ -326,7 +343,11 @@ const PlayerGrowth = {
         players.forEach(player => {
             this.ensurePlayerFields(player);
             player.age += 1;
-            player.contractYearsRemaining = Math.max(0, (Number(player.contractYearsRemaining) || 0) - 1);
+            player.contractYears = Math.max(0, (Number(player.contractYears) || Number(player.contractYearsRemaining) || 0) - 1);
+            player.contractYearsRemaining = player.contractYears;
+            if (player.contractYears <= 0) {
+                Economy.signContract(player);
+            }
             this.recalculatePlayerEconomics(player);
         });
     },
@@ -371,9 +392,7 @@ const PlayerGrowth = {
         if (typeof player.calculateValue === 'function') {
             player.value = player.calculateValue();
         }
-        if (typeof player.calculateWage === 'function') {
-            player.wage = player.calculateWage();
-        }
+        player.wage = player.salary;
     },
 
     clamp(value, min, max) {
@@ -390,7 +409,7 @@ const Economy = {
     },
 
     roundMoney(amount) {
-        return Number((Number(amount || 0)).toFixed(1));
+        return Number((Number(amount || 0)).toFixed(2));
     },
 
     formatMoney(amount) {
@@ -398,17 +417,30 @@ const Economy = {
         return `${rounded.toLocaleString()}万`;
     },
 
-    calculatePlayerWage(player) {
-        const ability = Math.max(1, Number(player && player.ability) || 1);
-        const salary = Math.max(0.1, 0.1 * Math.pow(ability / 10, 2.2));
+    calculateSalary(abilityValue) {
+        const ability = Math.max(Number(abilityValue) || 1, 10);
+        const salary = 0.1 * Math.pow(ability / 10, 2.2);
         return this.roundMoney(salary * this.random(0.8, 1.2));
+    },
+
+    calculatePlayerWage(player) {
+        return this.calculateSalary(player && player.ability);
+    },
+
+    signContract(player, years) {
+        if (!player) return null;
+        player.contractYears = Number.isInteger(years) ? years : Player.generateContractYears(player.age);
+        player.contractYearsRemaining = player.contractYears;
+        player.salary = this.calculateSalary(player.ability);
+        player.wage = player.salary;
+        return player.salary;
     },
 
     calculatePlayerValue(player) {
         const ability = Math.max(1, Number(player && player.ability) || 1);
         const potential = Math.max(ability, Number(player && player.potential) || ability);
         const age = Number(player && player.age) || 24;
-        const contractYears = Math.max(0, Math.min(5, Number(player && player.contractYearsRemaining) || 1));
+        const contractYears = Math.max(0, Math.min(5, Number(player && (player.contractYears ?? player.contractYearsRemaining)) || 0));
 
         let ageFactor = 1;
         if (age <= 20) ageFactor = 1.55;
@@ -419,7 +451,7 @@ const Economy = {
         else ageFactor = 0.35;
 
         const potentialFactor = Math.max(0.75, Math.min(1.8, 0.75 + (potential - ability) / 120));
-        const contractFactor = contractYears <= 0 ? 0.35 : contractYears === 1 ? 0.55 : contractYears === 2 ? 0.8 : 1;
+        const contractFactor = 0.5 + contractYears * 0.2;
         return Math.max(1, Math.round(ability * ability * 0.04 * ageFactor * potentialFactor * contractFactor));
     },
 
@@ -441,7 +473,7 @@ const Economy = {
 
     getSquadSalary(team) {
         if (!team || !Array.isArray(team.players)) return 0;
-        return this.roundMoney(team.players.reduce((sum, player) => sum + (Number(player.wage) || 0.1), 0));
+        return this.roundMoney(team.players.reduce((sum, player) => sum + (Number(player.salary) || Number(player.wage) || 0.1), 0));
     },
 
     settleMatch(team, leagueLevel, isHome) {
@@ -494,7 +526,7 @@ const Economy = {
         if (team.financialCrisisLevel < 3 || team.players.length <= 18) return [];
 
         const player = [...team.players].sort((a, b) =>
-            ((b.wage || 0) - (a.wage || 0)) || ((b.age || 0) - (a.age || 0))
+            ((b.salary || b.wage || 0) - (a.salary || a.wage || 0)) || ((b.age || 0) - (a.age || 0))
         )[0];
         if (!player) return [];
 
