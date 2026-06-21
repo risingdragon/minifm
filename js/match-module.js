@@ -270,6 +270,7 @@ const MatchModule = {
         const awayGrowthChanges = PlayerGrowth.applyPostMatchChange(awayTeam);
         this.currentMatchResult.growthChanges = isHome ? homeGrowthChanges : awayGrowthChanges;
         this.currentMatchResult.lineupSuggestions = this.findStrongerSubstitutes(gameState.playerTeam);
+        this.currentMatchResult.lineupSuggestionShown = false;
 
         // 模拟本轮其他比赛（所有联赛的AI比赛使用简化模拟）
         this.simulateOtherMatches();
@@ -496,7 +497,8 @@ const MatchModule = {
         document.getElementById('match-details').innerHTML = html;
         LeagueModule.render();
 
-        if (lineupSuggestions.length > 0) {
+        if (lineupSuggestions.length > 0 && !result.lineupSuggestionShown) {
+            result.lineupSuggestionShown = true;
             this.showLineupSuggestionModal(lineupSuggestions);
         }
     },
@@ -809,7 +811,7 @@ const MatchModule = {
             }
         }
 
-        // 更新转会市场
-        gameState.transferMarket = DataGenerator.generateTransferMarket(gameState.currentLeagueLevel, 15);
+        // 更新转会市场：从其它球队的弃将中抽取，不再凭空生成
+        gameState.transferMarket = DataGenerator.generateTransferMarketFromOtherTeams(gameState.currentLeagueLevel, 15);
     }
 };

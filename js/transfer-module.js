@@ -243,9 +243,9 @@ const TransferModule = {
     },
 
     renderTransferMarket() {
-        // 如果转会市场为空，生成新球员
+        // 如果转会市场为空，从其它球队弃将中抽取
         if (gameState.transferMarket.length === 0) {
-            gameState.transferMarket = DataGenerator.generateTransferMarket(gameState.currentLeagueLevel, 15);
+            gameState.transferMarket = DataGenerator.generateTransferMarketFromOtherTeams(gameState.currentLeagueLevel, 15);
         }
 
         let players = [...gameState.transferMarket];
@@ -478,9 +478,9 @@ const TransferModule = {
         `;
     },
 
-    // 刷新转会市场
+    // 刷新转会市场：从其它球队弃将中重新抽取
     refreshMarket() {
-        gameState.transferMarket = DataGenerator.generateTransferMarket(gameState.currentLeagueLevel, 15);
+        gameState.transferMarket = DataGenerator.generateTransferMarketFromOtherTeams(gameState.currentLeagueLevel, 15);
         Storage.save(gameState);
         this.renderTransferMarket();
     },

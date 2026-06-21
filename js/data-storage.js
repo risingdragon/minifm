@@ -353,14 +353,130 @@ const DataGenerator = {
         }
     },
 
-    // 生成转会市场球员
+    // 计算一名球员对球队的"不想要程度"（得分越高越可能被挂牌）
+    // 因素：年龄越大分越高、能力在队里越靠下分越高、合同即将到期分越高、是替补分更高
+    getUnwantedScore(player, team) {
+        let score = 0;
+        // 年龄：30 岁以上显著增加，35+ 基本必走
+        if (player.age >= 35) score += 80;
+        else if (player.age >= 32) score += 55;
+        else if (player.age >= 30) score += 30;
+        else if (player.age >= 28) score += 10;
+        // 能力低于当前联赛平均水平（结合球队整体水平估算）
+        const teamAbilities = (team.players || []).map(p => Number(p.ability) || 0);
+        const teamAvg = teamAbilities.length
+            ? teamAbilities.reduce((a, b) => a + b, 0) / teamAbilities.length
+            : 50;
+        if (player.ability < teamAvg - 10) score += 40;
+        else if (player.ability < teamAvg) score += 20;
+        else if (player.ability > teamAvg + 15) score -= 25; // 核心球员不想卖
+        // 合同即将到期
+        const contractYears = Number(player.contractYears) || 0;
+        if (contractYears <= 1) score += 35;
+        else if (contractYears <= 2) score += 15;
+        // 是否替补（不在首发阵容里）
+        const isStarter = (team.startingLineup || []).includes(player.id);
+        if (!isStarter) score += 25;
+        // 潜力高于能力很多的年轻球员反而不想卖
+        if (player.age <= 25 && (player.potential - player.ability) >= 20) score -= 20;
+        return score + Math.random() * 15;
+    },
+
+    // 转会市场球员：从其它球队（同级和相邻级别）的弃将里抽取，不再凭空生成
+    generateTransferMarketFromOtherTeams(leagueLevel, count = 10) {
+        if (!gameState || !Array.isArray(gameState.leagues)) {
+            return this.generateTransferMarket(leagueLevel, count);
+        }
+
+        // 先确保相关联赛已加载（同级和相邻级别）
+        const relevantLevels = new Set([
+            leagueLevel,
+            Math.max(1, leagueLevel - 1),
+            Math.min(CONFIG.LEAGUE_LEVELS, leagueLevel + 1)
+        ]);
+        for (const league of gameState.leagues) {
+            if (relevantLevels.has(league.level) && !league.isTeamsLoaded) {
+                league.ensureFullLoad();
+            }
+        }
+
+        // 收集候选球员（每队最多 2 名）
+        const candidates = [];
+        for (const league of gameState.leagues) {
+            if (!relevantLevels.has(league.level)) continue;
+            for (const team of league.teams) {
+                if (!team || team.isPlayerTeam) continue; // 跳过玩家自己的球队
+                if (!Array.isArray(team.players) || team.players.length === 0) continue;
+
+                // 为每个球员评分
+                const scored = team.players
+                    .filter(p => p && p.id !== undefined)
+                    .map(p => ({ player: p, team: team, score: this.getUnwantedScore(p, team) }))
+                    .sort((a, b) => b.score - a.score);
+
+                // 每队取 1-2 名最想卖的（并过滤掉"非常不想卖"的）
+                const takeCount = Math.min(2, scored.length);
+                for (let i = 0; i < takeCount; i++) {
+                    if (scored[i].score < 0) break;
+                    candidates.push(scored[i]);
+                }
+            }
+        }
+
+        // 打乱顺序
+        for (let i = candidates.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+        }
+
+        // 取前 count 名放进转会市场
+        const picked = candidates.slice(0, count);
+
+        // 被选中的球员从原球队移除（真正转会），原球队再补一名同级别的新人
+        const marketPlayers = [];
+        for (const item of picked) {
+            const team = item.team;
+            const player = item.player;
+            if (!team || !player) continue;
+
+            // 从原球队移除
+            const idx = team.players.findIndex(p => p.id === player.id);
+            if (idx !== -1) team.players.splice(idx, 1);
+            const lineupIdx = (team.startingLineup || []).indexOf(player.id);
+            if (lineupIdx !== -1) team.startingLineup.splice(lineupIdx, 1);
+
+            // 如果从首发里拿掉了，重置默认首发（避免 10 人上场）
+            if (lineupIdx !== -1 && typeof team.setDefaultLineup === 'function') {
+                team.setDefaultLineup();
+            }
+
+            // 原球队补一名同级别的新球员
+            const positions = ['GK', 'DF', 'MF', 'CF'];
+            const pos = positions[Math.floor(Math.random() * positions.length)];
+            const newPlayer = this.generatePlayer(pos, team.leagueLevel);
+            team.players.push(newPlayer);
+
+            marketPlayers.push(player);
+        }
+
+        // 如果候选不足，再用同级别的随机球员补足（比如刚开新游戏时还没足够弃将）
+        while (marketPlayers.length < count) {
+            const positions = ['GK', 'DF', 'MF', 'CF'];
+            const pos = positions[Math.floor(Math.random() * positions.length)];
+            marketPlayers.push(this.generatePlayer(pos, leagueLevel));
+        }
+
+        return marketPlayers;
+    },
+
+    // 保留旧方法，用于补位/测试
     generateTransferMarket(leagueLevel, count = 10) {
         const players = [];
         for (let i = 0; i < count; i++) {
             const positions = ['GK', 'DF', 'MF', 'CF'];
             const pos = positions[Math.floor(Math.random() * positions.length)];
-            // 转会市场球员能力略高于当前联赛平均水平
-            const player = this.generatePlayer(pos, Math.max(1, leagueLevel - 1));
+            // 转会市场从同级联赛中抽取，不再强行升级
+            const player = this.generatePlayer(pos, leagueLevel);
             players.push(player);
         }
         return players;

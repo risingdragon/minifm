@@ -71,8 +71,8 @@ const Game = {
         gameState.currentLeagueLevel = CONFIG.LEAGUE_LEVELS;
         gameState.isInitialized = true;
 
-        // 生成初始转会市场
-        gameState.transferMarket = DataGenerator.generateTransferMarket(gameState.currentLeagueLevel, 15);
+        // 生成初始转会市场（从其它球队弃将中抽取）
+        gameState.transferMarket = DataGenerator.generateTransferMarketFromOtherTeams(gameState.currentLeagueLevel, 15);
 
         // 保存游戏
         Storage.save(gameState);

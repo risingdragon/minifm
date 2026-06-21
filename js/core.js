@@ -39,21 +39,21 @@ const CONFIG = {
     // 各级联赛球员能力值范围（滑动区间：每级 50 个取值，相邻联赛有重叠）
     // 联赛内部按金字塔分布：能力越高，球员人数越少
     LEAGUE_ABILITY_RANGES: {
-        "1": { min: 151, max: 200 },
-        "2": { min: 121, max: 170 },
-        "3": { min: 91, max: 140 },
-        "4": { min: 61, max: 110 },
-        "5": { min: 31, max: 80 },
+        "1": { min: 101, max: 200 },
+        "2": { min: 81, max: 170 },
+        "3": { min: 61, max: 140 },
+        "4": { min: 41, max: 110 },
+        "5": { min: 21, max: 80 },
         "6": { min: 1, max: 50 }
     },
     // 各级联赛球员潜力上限
     LEAGUE_POTENTIAL_CAP: {
         "1": 200,
-        "2": 180,
-        "3": 150,
-        "4": 120,
-        "5": 90,
-        "6": 60
+        "2": 170,
+        "3": 140,
+        "4": 110,
+        "5": 80,
+        "6": 50
     },
     ECONOMY: {
         MATCH_INCOME: {
@@ -550,7 +550,7 @@ class Team {
         this.name = data.name || '未命名球队';
         const storedCash = Number.isFinite(data.cash) ? data.cash : (Number.isFinite(data.funds) ? data.funds : 300);
         this.cash = storedCash > 100000 ? Economy.roundMoney(storedCash / 10000) : storedCash;
-        this.players = data.players || [];
+        this.players = Array.isArray(data.players) ? data.players : [];
         this.startingLineup = data.startingLineup || [];
         this.leagueLevel = data.leagueLevel || 6;
         this.isPlayerTeam = data.isPlayerTeam || false;
@@ -568,8 +568,11 @@ class Team {
         };
 
         // === 懒加载状态 ===
-        this.isPlayersLoaded = data.isPlayersLoaded !== undefined ? data.isPlayersLoaded : true;
-        this.playersData = data.playersData || null;
+        this.playersData = Array.isArray(data.playersData) && data.playersData.length > 0 ? data.playersData : null;
+        this.isPlayersLoaded = data.isPlayersLoaded !== undefined ? data.isPlayersLoaded : this.players.length > 0;
+        if (this.isPlayersLoaded && this.players.length === 0) {
+            this.isPlayersLoaded = false;
+        }
 
         if (this.isPlayersLoaded) {
             this.assignShirtNumbers();
@@ -667,7 +670,8 @@ class Team {
 
     // 按需加载球员数据（懒加载）
     loadPlayers() {
-        if (this.isPlayersLoaded) return;
+        if (this.isPlayersLoaded && this.players.length > 0) return;
+        this.isPlayersLoaded = false;
 
         // 如果有缓存数据，从缓存恢复
         const hasSavedPlayersData = Boolean(this.playersData);
@@ -714,7 +718,11 @@ class Team {
             financialCrisisLevel: this.financialCrisisLevel,
             stats: this.stats,
             isPlayersLoaded: this.isPlayersLoaded,
-            playersData: this.isPlayersLoaded ? null : (this.players.map(p => p.toJSON ? p.toJSON() : p) || this.playersData)
+            playersData: this.isPlayersLoaded ? null : (
+                this.playersData
+                    ? this.playersData.map(p => p.toJSON ? p.toJSON() : p)
+                    : this.players.map(p => p.toJSON ? p.toJSON() : p)
+            )
         };
     }
 }

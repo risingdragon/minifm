@@ -1,70 +1,143 @@
-// 验证脚本：模拟 CONFIG 和 generatePlayer 逻辑
 const CONFIG = {
     LEAGUE_ABILITY_RANGES: {
-        '1': { min: 167, max: 200 },
-        '2': { min: 134, max: 166 },
-        '3': { min: 101, max: 133 },
-        '4': { min: 68, max: 100 },
-        '5': { min: 35, max: 67 },
-        '6': { min: 1, max: 34 }
+        "1": { min: 105, max: 200 },
+        "2": { min: 85, max: 175 },
+        "3": { min: 65, max: 150 },
+        "4": { min: 45, max: 125 },
+        "5": { min: 25, max: 100 },
+        "6": { min: 10, max: 80 }
     }
 };
 
-function generatePlayerAbility(leagueLevel) {
-    if (leagueLevel === undefined) leagueLevel = 1;
+function generatePlayerAbility(leagueLevel = 1) {
     const range = CONFIG.LEAGUE_ABILITY_RANGES[leagueLevel] || CONFIG.LEAGUE_ABILITY_RANGES[6];
     const minAbility = range.min;
     const maxAbility = range.max;
-    const ability = Math.floor(Math.random() * (maxAbility - minAbility + 1)) + minAbility;
-    return ability;
+    const rangeSize = maxAbility - minAbility + 1;
+    const totalWeight = rangeSize * (rangeSize + 1) * (2 * rangeSize + 1) / 6;
+    const pick = Math.floor(Math.random() * totalWeight) + 1;
+
+    let cumulative = 0;
+    for (let i = 1; i <= rangeSize; i++) {
+        cumulative += i * i;
+        if (pick <= cumulative) {
+            return maxAbility - i + 1;
+        }
+    }
+
+    return minAbility;
 }
 
-const EXPECTED = {
-    1: { min: 167, max: 200, avg: 183.5 },
-    2: { min: 134, max: 166, avg: 150 },
-    3: { min: 101, max: 133, avg: 117 },
-    4: { min: 68, max: 100, avg: 84 },
-    5: { min: 35, max: 67, avg: 51 },
-    6: { min: 1, max: 34, avg: 17.5 }
-};
+function expectedWeightedAverage(range) {
+    const minAbility = range.min;
+    const maxAbility = range.max;
+    const rangeSize = maxAbility - minAbility + 1;
+    let totalWeight = 0;
+    let weightedSum = 0;
 
-const N = 100;
+    for (let ability = minAbility; ability <= maxAbility; ability++) {
+        const weight = Math.pow(maxAbility - ability + 1, 2);
+        totalWeight += weight;
+        weightedSum += ability * weight;
+    }
+
+    return weightedSum / totalWeight;
+}
+
+function generateTeamAbility(leagueLevel) {
+    const squad = [];
+    const counts = { GK: 3, DF: 8, MF: 8, CF: 6 };
+    const starters = { GK: 1, DF: 4, MF: 4, CF: 2 };
+
+    Object.keys(counts).forEach(position => {
+        for (let i = 0; i < counts[position]; i++) {
+            squad.push({ position, ability: generatePlayerAbility(leagueLevel) });
+        }
+    });
+
+    return Object.keys(starters).reduce((sum, position) => {
+        return sum + squad
+            .filter(player => player.position === position)
+            .sort((a, b) => b.ability - a.ability)
+            .slice(0, starters[position])
+            .reduce((positionSum, player) => positionSum + player.ability, 0);
+    }, 0);
+}
+
+const PLAYER_SAMPLE_COUNT = 5000;
+const TEAM_SAMPLE_COUNT = 5000;
 const results = [];
 
 for (let level = 1; level <= 6; level++) {
-    const values = [];
-    for (let i = 0; i < N; i++) {
-        values.push(generatePlayerAbility(level));
+    const range = CONFIG.LEAGUE_ABILITY_RANGES[level];
+    const playerValues = [];
+    const teamValues = [];
+
+    for (let i = 0; i < PLAYER_SAMPLE_COUNT; i++) {
+        playerValues.push(generatePlayerAbility(level));
     }
-    const min = Math.min.apply(null, values);
-    const max = Math.max.apply(null, values);
-    const avg = values.reduce(function (a, b) { return a + b; }, 0) / N;
-    const exp = EXPECTED[level];
-    const inRange = min >= exp.min && max <= exp.max;
-    const avgClose = Math.abs(avg - exp.avg) <= 2;
-    results.push({ level: level, min: min, max: max, avg: avg, exp: exp, inRange: inRange, avgClose: avgClose });
+
+    for (let i = 0; i < TEAM_SAMPLE_COUNT; i++) {
+        teamValues.push(generateTeamAbility(level));
+    }
+
+    playerValues.sort((a, b) => a - b);
+    teamValues.sort((a, b) => a - b);
+
+    const playerMin = Math.min(...playerValues);
+    const playerMax = Math.max(...playerValues);
+    const playerAverage = playerValues.reduce((sum, value) => sum + value, 0) / playerValues.length;
+    const teamAverage = teamValues.reduce((sum, value) => sum + value, 0) / teamValues.length;
+    const expectedAverage = expectedWeightedAverage(range);
+    const inRange = playerMin >= range.min && playerMax <= range.max;
+    const averageClose = Math.abs(playerAverage - expectedAverage) <= 2;
+
+    results.push({
+        level,
+        range,
+        playerMin,
+        playerMax,
+        playerAverage,
+        expectedAverage,
+        teamP10: teamValues[Math.floor(teamValues.length * 0.1)],
+        teamAverage,
+        teamP90: teamValues[Math.floor(teamValues.length * 0.9)],
+        inRange,
+        averageClose
+    });
 }
 
-console.log('\n=== 球员能力值范围验证（每级 100 样本）\n');
-console.log('| 级别 | 范围(实际) | 平均(实际) | 范围(期望) | 平均(期望) | 范围检查 | 平均检查 |');
-console.log('|------|-----------|-----------|-----------|-----------|----------|----------|');
+console.log('\n=== Ability range validation ===\n');
+console.log('| Level | Player range | Player avg | Expected avg | Team p10 | Team avg | Team p90 | Range | Avg |');
+console.log('|------|--------------|------------|--------------|----------|----------|----------|-------|-----|');
 
 let allPass = true;
-for (let i = 0; i < results.length; i++) {
-    const r = results[i];
-    const rangeStr = r.min + '-' + r.max;
-    const expRangeStr = r.exp.min + '-' + r.exp.max;
-    const row = '| L' + r.level + '   | ' + rangeStr + ' | ' + r.avg.toFixed(2) + ' | ' + expRangeStr + ' | ' + r.exp.avg + ' | ' + (r.inRange ? 'PASS' : 'FAIL') + '   | ' + (r.avgClose ? 'PASS' : 'FAIL') + '   |';
+results.forEach(result => {
+    const row = [
+        `| L${result.level}`,
+        `${result.playerMin}-${result.playerMax}`,
+        result.playerAverage.toFixed(2),
+        result.expectedAverage.toFixed(2),
+        result.teamP10,
+        result.teamAverage.toFixed(0),
+        result.teamP90,
+        result.inRange ? 'PASS' : 'FAIL',
+        `${result.averageClose ? 'PASS' : 'FAIL'} |`
+    ].join(' | ');
+
     console.log(row);
-    if (!r.inRange || !r.avgClose) allPass = false;
-}
+    if (!result.inRange || !result.averageClose) allPass = false;
+});
 
-console.log('\n=== Fallback 测试 (leagueLevel = 99):');
-const fbAbility = generatePlayerAbility(99);
-console.log('生成能力值: ' + fbAbility + ' (应在 1-34 范围内)');
-const fbPass = fbAbility >= 1 && fbAbility <= 34;
-console.log('Fallback: ' + (fbPass ? 'PASS' : 'FAIL'));
-if (!fbPass) allPass = false;
+const fallbackAbility = generatePlayerAbility(99);
+const fallbackPass = fallbackAbility >= CONFIG.LEAGUE_ABILITY_RANGES[6].min &&
+    fallbackAbility <= CONFIG.LEAGUE_ABILITY_RANGES[6].max;
 
-console.log('\n=== 总体结果: ' + (allPass ? 'PASS 全部通过' : 'FAIL 有失败项') + '\n');
+console.log('\n=== Fallback test (leagueLevel = 99) ===');
+console.log(`Generated ability: ${fallbackAbility}`);
+console.log(`Fallback: ${fallbackPass ? 'PASS' : 'FAIL'}`);
+
+if (!fallbackPass) allPass = false;
+
+console.log(`\n=== Overall result: ${allPass ? 'PASS' : 'FAIL'} ===\n`);
 process.exit(allPass ? 0 : 1);
