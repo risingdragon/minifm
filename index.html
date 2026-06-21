@@ -113,60 +113,67 @@
             <!-- 转会页面 -->
             <section id="transfer-page" class="page">
                 <div class="transfer-container">
-                    <!-- 资金显示 -->
-                    <div class="transfer-funds">
-                        <h3>💰 可用资金: <span id="transfer-funds-value">¥0</span></h3>
+                    <!-- 资金和按钮同一行 -->
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:1rem;">
+                        <div class="transfer-funds" style="margin:0;">
+                            <h3 style="margin:0;">💰 可用资金: <span id="transfer-funds-value">¥0</span></h3>
+                        </div>
+
+                        <div class="transfer-tabs" role="tablist" aria-label="转会操作" style="margin:0;">
+                            <button class="transfer-tab active" type="button" data-transfer-view="buy" role="tab" aria-selected="true">
+                                买进球员
+                            </button>
+                            <button class="transfer-tab" type="button" data-transfer-view="sell" role="tab" aria-selected="false">
+                                卖出球员
+                            </button>
+                        </div>
                     </div>
 
                     <!-- 转会市场区域 -->
-                    <div class="transfer-market">
-                        <h2>转会市场 - 可购买球员</h2>
-                        <!-- 筛选器 -->
-                        <div class="filter-section">
-                            <div class="filter-group">
-                                <label class="filter-label">位置筛选:</label>
-                                <select id="position-filter" class="filter-select">
-                                    <option value="all">全部位置</option>
-                                    <option value="GK">门将</option>
-                                    <option value="DF">后卫</option>
-                                    <option value="MF">中场</option>
-                                    <option value="CF">前锋</option>
-                                </select>
+                    <div id="transfer-buy-view" class="transfer-view active" data-transfer-panel="buy" role="tabpanel">
+                        <div class="transfer-market">
+                            <h2>买进球员</h2>
+                            <!-- 筛选器 -->
+                            <div class="filter-section">
+                                <div class="filter-group">
+                                    <label class="filter-label">位置筛选:</label>
+                                    <select id="position-filter" class="filter-select">
+                                        <option value="all">全部位置</option>
+                                        <option value="GK">门将</option>
+                                        <option value="DF">后卫</option>
+                                        <option value="MF">中场</option>
+                                        <option value="CF">前锋</option>
+                                    </select>
+                                </div>
+                                <div class="filter-group">
+                                    <label class="filter-label">能力值筛选:</label>
+                                    <select id="ability-filter" class="filter-select">
+                                        <option value="all">全部能力</option>
+                                        <option value="high">高能力 (80+)</option>
+                                        <option value="medium">中等能力 (60-79)</option>
+                                        <option value="low">低能力 (&lt;60)</option>
+                                    </select>
+                                </div>
+                                <button id="refresh-market-btn" class="btn btn-secondary btn-small">
+                                    🔄 刷新市场
+                                </button>
                             </div>
-                            <div class="filter-group">
-                                <label class="filter-label">能力值筛选:</label>
-                                <select id="ability-filter" class="filter-select">
-                                    <option value="all">全部能力</option>
-                                    <option value="high">高能力 (80+)</option>
-                                    <option value="medium">中等能力 (60-79)</option>
-                                    <option value="low">低能力 (<60)< /option>
-                                </select>
+                            <div id="transfer-list" class="transfer-table-wrap">
+                                <p>暂无转会数据</p>
                             </div>
-                            <div class="filter-group">
-                                <label class="filter-label">排序:</label>
-                                <select id="sort-filter" class="filter-select">
-                                    <option value="ability-desc">能力值 (从高到低)</option>
-                                    <option value="ability-asc">能力值 (从低到高)</option>
-                                    <option value="value-desc">身价 (从高到低)</option>
-                                    <option value="value-asc">身价 (从低到高)</option>
-                                    <option value="age-asc">年龄 (从年轻到老)</option>
-                                    <option value="age-desc">年龄 (从老到年轻)</option>
-                                </select>
-                            </div>
-                            <button id="refresh-market-btn" class="btn btn-secondary btn-small">
-                                🔄 刷新市场
-                            </button>
-                        </div>
-                        <div id="transfer-list" class="player-grid">
-                            <p>暂无转会数据</p>
                         </div>
                     </div>
 
                     <!-- 出售球员区域 -->
-                    <div class="sell-section">
-                        <h2>出售球员 - 我的球队</h2>
-                        <div id="sell-list" class="player-grid">
-                            <p>暂无球员数据</p>
+                    <div id="transfer-sell-view" class="transfer-view" data-transfer-panel="sell" role="tabpanel" hidden>
+                        <div class="sell-section">
+                            <div class="transfer-section-head">
+                                <h2>卖出球员</h2>
+                                <span id="sell-squad-count" class="squad-count">球员数量：- / -</span>
+                            </div>
+                            <div id="sell-list" class="transfer-table-wrap">
+                                <p>暂无球员数据</p>
+                            </div>
                         </div>
                     </div>
                 </div>

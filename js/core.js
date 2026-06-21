@@ -32,6 +32,8 @@ const CONFIG = {
         'MF': 5,
         'CF': 3
     },
+    // 阵容最大人数
+    SQUAD_MAX_SIZE: 25,
     // 自动保存间隔（毫秒）
     AUTO_SAVE_INTERVAL: 30000,
     // 各级联赛球员能力值范围（滑动区间：每级 50 个取值，相邻联赛有重叠）
@@ -419,8 +421,11 @@ const Economy = {
 
     calculateSalary(abilityValue) {
         const ability = Math.max(Number(abilityValue) || 1, 10);
-        const salary = 0.1 * Math.pow(ability / 10, 2.2);
-        return this.roundMoney(salary * this.random(0.8, 1.2));
+        let salary = 0.1 * Math.pow(ability / 10, 2.2);
+        salary = salary * this.random(0.8, 1.2);
+        // 周薪保留1位小数，最低0.1万
+        salary = Math.max(0.1, Number(salary.toFixed(1)));
+        return salary;
     },
 
     calculatePlayerWage(player) {

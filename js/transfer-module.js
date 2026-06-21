@@ -9,17 +9,30 @@ const TransferModule = {
         sort: 'ability-desc'
     },
 
+    // 转会市场排序状态
+    buySortBy: 'ability',
+    buySortOrder: 'desc',
+
+    // 出售列表排序状态
+    sellSortBy: 'ability',
+    sellSortOrder: 'desc',
+
     // 当前选中的球员（用于购买/出售确认）
     selectedPlayer: null,
     selectedPlayerIndex: null,
     selectedSellPlayer: null,
     selectedSellPlayerIndex: null,
+    currentView: 'buy',
 
     render() {
+        this.initTabs();
+
         if (!gameState.isInitialized) {
             document.getElementById('transfer-list').innerHTML = '<p>请先开始新游戏</p>';
             document.getElementById('sell-list').innerHTML = '<p>请先开始新游戏</p>';
             document.getElementById('transfer-funds-value').textContent = '0万';
+            this.updateSellSquadCount();
+            this.updateTransferView();
             return;
         }
 
@@ -32,6 +45,45 @@ const TransferModule = {
         // 渲染转会市场和出售列表
         this.renderTransferMarket();
         this.renderSellList();
+        this.updateTransferView();
+    },
+
+    updateSellSquadCount() {
+        const countEl = document.getElementById('sell-squad-count');
+        if (!countEl) return;
+
+        const totalPlayers = gameState.isInitialized ? gameState.playerTeam.players.length : 0;
+        const maxPlayers = CONFIG.SQUAD_MAX_SIZE;
+        countEl.textContent = `球员数量：${totalPlayers} / ${maxPlayers}`;
+    },
+
+    initTabs() {
+        document.querySelectorAll('.transfer-tab').forEach(button => {
+            if (button.hasAttribute('data-initialized')) return;
+            button.addEventListener('click', () => {
+                this.switchView(button.dataset.transferView || 'buy');
+            });
+            button.setAttribute('data-initialized', 'true');
+        });
+    },
+
+    switchView(view) {
+        this.currentView = view === 'sell' ? 'sell' : 'buy';
+        this.updateTransferView();
+    },
+
+    updateTransferView() {
+        document.querySelectorAll('.transfer-tab').forEach(button => {
+            const isActive = button.dataset.transferView === this.currentView;
+            button.classList.toggle('active', isActive);
+            button.setAttribute('aria-selected', String(isActive));
+        });
+
+        document.querySelectorAll('.transfer-view').forEach(panel => {
+            const isActive = panel.dataset.transferPanel === this.currentView;
+            panel.classList.toggle('active', isActive);
+            panel.hidden = !isActive;
+        });
     },
 
     initFilters() {
@@ -53,16 +105,6 @@ const TransferModule = {
                 this.renderTransferMarket();
             });
             abilityFilter.setAttribute('data-initialized', 'true');
-        }
-
-        // 排序筛选
-        const sortFilter = document.getElementById('sort-filter');
-        if (sortFilter && !sortFilter.hasAttribute('data-initialized')) {
-            sortFilter.addEventListener('change', (e) => {
-                this.filters.sort = e.target.value;
-                this.renderTransferMarket();
-            });
-            sortFilter.setAttribute('data-initialized', 'true');
         }
 
         // 刷新市场按钮
@@ -160,62 +202,127 @@ const TransferModule = {
         return players;
     },
 
+    // 切换转会市场排序
+    toggleBuySort(sortBy) {
+        if (this.buySortBy === sortBy) {
+            this.buySortOrder = this.buySortOrder === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.buySortBy = sortBy;
+            this.buySortOrder = ['ability', 'potential', 'age', 'value', 'wage'].includes(sortBy) ? 'desc' : 'asc';
+        }
+        this.renderTransferMarket();
+    },
+
+    // 对转会市场球员进行排序
+    sortBuyPlayers(players) {
+        const sortedPlayers = [...players];
+        const positionOrder = { 'GK': 1, 'DF': 2, 'MF': 3, 'CF': 4 };
+
+        sortedPlayers.sort((a, b) => {
+            let comparison = 0;
+            if (this.buySortBy === 'position') {
+                comparison = (positionOrder[a.position] || 99) - (positionOrder[b.position] || 99);
+            } else if (this.buySortBy === 'name') {
+                comparison = a.name.localeCompare(b.name, 'zh-CN');
+            } else if (this.buySortBy === 'ability') {
+                comparison = a.ability - b.ability;
+            } else if (this.buySortBy === 'potential') {
+                comparison = a.potential - b.potential;
+            } else if (this.buySortBy === 'age') {
+                comparison = a.age - b.age;
+            } else if (this.buySortBy === 'value') {
+                comparison = a.value - b.value;
+            } else if (this.buySortBy === 'wage') {
+                comparison = (a.salary || a.wage || 0) - (b.salary || b.wage || 0);
+            }
+            return this.buySortOrder === 'asc' ? comparison : -comparison;
+        });
+        return sortedPlayers;
+    },
+
     renderTransferMarket() {
         // 如果转会市场为空，生成新球员
         if (gameState.transferMarket.length === 0) {
             gameState.transferMarket = DataGenerator.generateTransferMarket(gameState.currentLeagueLevel, 15);
         }
 
-        const filteredPlayers = this.getFilteredPlayers();
+        let players = [...gameState.transferMarket];
 
-        if (filteredPlayers.length === 0) {
+        // 位置筛选
+        if (this.filters.position !== 'all') {
+            players = players.filter(p => p.position === this.filters.position);
+        }
+
+        // 能力值筛选
+        if (this.filters.ability !== 'all') {
+            switch (this.filters.ability) {
+                case 'high':
+                    players = players.filter(p => p.ability >= 80);
+                    break;
+                case 'medium':
+                    players = players.filter(p => p.ability >= 60 && p.ability < 80);
+                    break;
+                case 'low':
+                    players = players.filter(p => p.ability < 60);
+                    break;
+            }
+        }
+
+        // 按表头点击排序
+        const sortedPlayers = this.sortBuyPlayers(players);
+
+        if (sortedPlayers.length === 0) {
             document.getElementById('transfer-list').innerHTML = '<p class="message message-warning">没有符合条件的球员</p>';
             return;
         }
 
-        const funds = gameState.playerTeam.cash;
+        const buyHeader = (field, label) => {
+            const active = this.buySortBy === field;
+            const marker = active ? (this.buySortOrder === 'asc' ? ' ▲' : ' ▼') : '';
+            return `<th class="${active ? 'sortable active' : 'sortable'}" onclick="TransferModule.toggleBuySort('${field}')">${label}${marker}</th>`;
+        };
 
-        const html = filteredPlayers.map((player) => {
-            // 找到球员在原始数组中的索引
+        const rows = sortedPlayers.map((player) => {
             const originalIndex = gameState.transferMarket.findIndex(p => p.id === player.id);
-            const canAfford = true;
+            const canAfford = gameState.playerTeam.cash >= player.value;
 
             return `
-                <div class="player-card ${canAfford ? '' : 'insufficient'}">
-                    <h4>${player.name}</h4>
-                    <div class="player-info">
-                        <span class="player-info-label">位置:</span>
-                        <span class="player-info-value">${CONFIG.POSITION_NAMES[player.position]}</span>
-                    </div>
-                    <div class="player-info">
-                        <span class="player-info-label">能力值:</span>
-                        <span class="player-info-value">${player.ability}</span>
-                    </div>
-                    <div class="player-info">
-                        <span class="player-info-label">年龄:</span>
-                        <span class="player-info-value">${player.age}岁</span>
-                    </div>
-                    <div class="player-info">
-                        <span class="player-info-label">身价:</span>
-                        <span class="player-info-value">${Economy.formatMoney(player.value)}</span>
-                    </div>
-                    <div class="player-info">
-                        <span class="player-info-label">周薪:</span>
-                        <span class="player-info-value">${Economy.formatMoney(player.salary || player.wage)}</span>
-                    </div>
-                    ${canAfford ? '' : '<p class="insufficient-funds">⚠️ 资金不足</p>'}
-                    <div class="player-card-actions">
-                        <button class="btn btn-primary ${canAfford ? '' : 'disabled'}" 
+                <tr class="${canAfford ? '' : 'insufficient-row'}">
+                    <td class="position-code">${player.position}</td>
+                    <td class="transfer-player-name">${player.name}</td>
+                    <td>${player.ability}</td>
+                    <td>${player.potential}</td>
+                    <td>${player.age}</td>
+                    <td>${Economy.formatMoney(player.value)}</td>
+                    <td>${Economy.formatMoney(player.salary || player.wage)}</td>
+                    <td>
+                        <button class="transfer-action-btn buy"
                                 onclick="TransferModule.showBuyModal(${originalIndex})"
                                 ${canAfford ? '' : 'disabled'}>
-                            💰 购买
+                            购买
                         </button>
-                    </div>
-                </div>
+                    </td>
+                </tr>
             `;
         }).join('');
 
-        document.getElementById('transfer-list').innerHTML = html;
+        document.getElementById('transfer-list').innerHTML = `
+            <table class="transfer-table">
+                <thead>
+                    <tr>
+                        ${buyHeader('position', '位置')}
+                        ${buyHeader('name', '姓名')}
+                        ${buyHeader('ability', '能力')}
+                        ${buyHeader('potential', '潜力')}
+                        ${buyHeader('age', '年龄')}
+                        ${buyHeader('value', '价值')}
+                        ${buyHeader('wage', '工资')}
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        `;
     },
 
     // 计算球员出售价格（基于能力值和年龄）
@@ -231,6 +338,48 @@ const TransferModule = {
             discountFactor = 0.8;
         }
         return Math.floor(player.value * discountFactor);
+    },
+
+    // 切换出售列表排序
+    toggleSellSort(sortBy) {
+        if (this.sellSortBy === sortBy) {
+            this.sellSortOrder = this.sellSortOrder === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.sellSortBy = sortBy;
+            this.sellSortOrder = ['ability', 'potential', 'age', 'sellPrice', 'shirtNumber'].includes(sortBy) ? 'desc' : 'asc';
+        }
+        this.renderSellList();
+    },
+
+    // 对出售列表球员进行排序
+    sortSellPlayers(players) {
+        const sortedPlayers = [...players];
+        const positionOrder = { 'GK': 1, 'DF': 2, 'MF': 3, 'CF': 4 };
+
+        sortedPlayers.sort((a, b) => {
+            let comparison = 0;
+            if (this.sellSortBy === 'status') {
+                const aStarting = gameState.playerTeam.startingLineup.includes(a.id) ? 0 : 1;
+                const bStarting = gameState.playerTeam.startingLineup.includes(b.id) ? 0 : 1;
+                comparison = aStarting - bStarting;
+            } else if (this.sellSortBy === 'position') {
+                comparison = (positionOrder[a.position] || 99) - (positionOrder[b.position] || 99);
+            } else if (this.sellSortBy === 'name') {
+                comparison = a.name.localeCompare(b.name, 'zh-CN');
+            } else if (this.sellSortBy === 'shirtNumber') {
+                comparison = (a.shirtNumber || 999) - (b.shirtNumber || 999);
+            } else if (this.sellSortBy === 'ability') {
+                comparison = a.ability - b.ability;
+            } else if (this.sellSortBy === 'potential') {
+                comparison = a.potential - b.potential;
+            } else if (this.sellSortBy === 'age') {
+                comparison = a.age - b.age;
+            } else if (this.sellSortBy === 'sellPrice') {
+                comparison = this.calculateSellPrice(a) - this.calculateSellPrice(b);
+            }
+            return this.sellSortOrder === 'asc' ? comparison : -comparison;
+        });
+        return sortedPlayers;
     },
 
     renderSellList() {
@@ -250,47 +399,87 @@ const TransferModule = {
             'CF': players.filter(p => p.position === 'CF').length
         };
 
-        const html = players.map((player, index) => {
+        // 按表头点击排序（同时保存原始索引，以便 onclik showSellModal 正确）
+        const indexedPlayers = players.map((p, i) => ({ player: p, originalIndex: i }));
+        const sortContext = { sortBy: this.sellSortBy, sortOrder: this.sellSortOrder };
+        indexedPlayers.sort((a, b) => {
+            const A = a.player, B = b.player;
+            let comparison = 0;
+            const positionOrder = { 'GK': 1, 'DF': 2, 'MF': 3, 'CF': 4 };
+            if (sortContext.sortBy === 'status') {
+                const aStarting = startingLineup.includes(A.id) ? 0 : 1;
+                const bStarting = startingLineup.includes(B.id) ? 0 : 1;
+                comparison = aStarting - bStarting;
+            } else if (sortContext.sortBy === 'position') {
+                comparison = (positionOrder[A.position] || 99) - (positionOrder[B.position] || 99);
+            } else if (sortContext.sortBy === 'name') {
+                comparison = A.name.localeCompare(B.name, 'zh-CN');
+            } else if (sortContext.sortBy === 'shirtNumber') {
+                comparison = (A.shirtNumber || 999) - (B.shirtNumber || 999);
+            } else if (sortContext.sortBy === 'ability') {
+                comparison = A.ability - B.ability;
+            } else if (sortContext.sortBy === 'potential') {
+                comparison = A.potential - B.potential;
+            } else if (sortContext.sortBy === 'age') {
+                comparison = A.age - B.age;
+            } else if (sortContext.sortBy === 'sellPrice') {
+                comparison = this.calculateSellPrice(A) - this.calculateSellPrice(B);
+            }
+            return sortContext.sortOrder === 'asc' ? comparison : -comparison;
+        });
+
+        const sellHeader = (field, label) => {
+            const active = this.sellSortBy === field;
+            const marker = active ? (this.sellSortOrder === 'asc' ? ' ▲' : ' ▼') : '';
+            return `<th class="${active ? 'sortable active' : 'sortable'}" onclick="TransferModule.toggleSellSort('${field}')">${label}${marker}</th>`;
+        };
+
+        const rows = indexedPlayers.map(({ player, originalIndex }) => {
             const isStarting = startingLineup.includes(player.id);
             const sellPrice = this.calculateSellPrice(player);
             const canSell = positionCounts[player.position] > CONFIG.SQUAD_MIN_PLAYERS[player.position];
 
             return `
-                <div class="player-card ${isStarting ? 'starting' : ''}">
-                    <h4>${player.name} ${isStarting ? '⭐' : ''}</h4>
-                    <div class="player-info">
-                        <span class="player-info-label">位置:</span>
-                        <span class="player-info-value">${CONFIG.POSITION_NAMES[player.position]}</span>
-                    </div>
-                    <div class="player-info">
-                        <span class="player-info-label">能力值:</span>
-                        <span class="player-info-value">${player.ability}</span>
-                    </div>
-                    <div class="player-info">
-                        <span class="player-info-label">年龄:</span>
-                        <span class="player-info-value">${player.age}岁</span>
-                    </div>
-                    <div class="player-info">
-                        <span class="player-info-label">身价:</span>
-                        <span class="player-info-value">${Economy.formatMoney(player.value)}</span>
-                    </div>
-                    <div class="player-info">
-                        <span class="player-info-label">出售价格:</span>
-                        <span class="sell-price">${Economy.formatMoney(sellPrice)}</span>
-                    </div>
-                    ${!canSell ? `<p class="insufficient-funds">⚠️ 该位置球员不足，无法出售</p>` : ''}
-                    <div class="player-card-actions">
-                        <button class="btn btn-success ${canSell ? '' : 'disabled'}" 
-                                onclick="TransferModule.showSellModal(${index})"
+                <tr class="${isStarting ? 'starting-row' : ''} ${canSell ? '' : 'locked-row'}">
+                    <td>${isStarting ? '首发' : '替补'}</td>
+                    <td class="position-code">${player.position}</td>
+                    <td>${player.shirtNumber || '-'}</td>
+                    <td class="transfer-player-name">${player.name}</td>
+                    <td>${player.ability}</td>
+                    <td>${player.potential}</td>
+                    <td>${player.age}</td>
+                    <td>${Economy.formatMoney(sellPrice)}</td>
+                    <td>
+                        <button class="transfer-action-btn sell"
+                                onclick="TransferModule.showSellModal(${originalIndex})"
                                 ${canSell ? '' : 'disabled'}>
-                            💵 出售
+                            出售
                         </button>
-                    </div>
-                </div>
+                    </td>
+                </tr>
             `;
         }).join('');
 
-        document.getElementById('sell-list').innerHTML = html;
+        this.updateSellSquadCount();
+
+        document.getElementById('sell-list').innerHTML = `
+            <table class="transfer-table">
+                <thead>
+                    <tr>
+                        ${sellHeader('status', '状态')}
+                        ${sellHeader('position', '位置')}
+                        ${sellHeader('shirtNumber', '号码')}
+                        ${sellHeader('name', '姓名')}
+                        ${sellHeader('ability', '能力')}
+                        ${sellHeader('potential', '潜力')}
+                        ${sellHeader('age', '年龄')}
+                        ${sellHeader('sellPrice', '售价')}
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        `;
     },
 
     // 刷新转会市场
@@ -313,8 +502,8 @@ const TransferModule = {
 
         document.getElementById('buy-modal-title').textContent = '购买球员确认';
         document.getElementById('buy-modal-player-info').innerHTML = `
-            <div class="details-card">
-                <h4 style="text-align: center; color: var(--primary-color);">${player.name}</h4>
+            <div class="details-card" style="background:#fff; color:#1a1a1a;">
+                <h4 style="text-align: center; color:#1a1a1a; font-weight:700; margin-bottom:0.75rem;">${player.name}</h4>
                 <div class="player-info">
                     <span class="player-info-label">位置:</span>
                     <span class="player-info-value">${CONFIG.POSITION_NAMES[player.position]}</span>
@@ -324,25 +513,29 @@ const TransferModule = {
                     <span class="player-info-value">${player.ability}</span>
                 </div>
                 <div class="player-info">
+                    <span class="player-info-label">潜力:</span>
+                    <span class="player-info-value">${player.potential}</span>
+                </div>
+                <div class="player-info">
                     <span class="player-info-label">年龄:</span>
                     <span class="player-info-value">${player.age}岁</span>
                 </div>
                 <div class="player-info">
                     <span class="player-info-label">购买价格:</span>
-                    <span class="player-info-value" style="color: var(--accent-color); font-weight: bold;">${Economy.formatMoney(player.value)}</span>
+                    <span class="player-info-value" style="color:#c0392b; font-weight:700;">${Economy.formatMoney(player.value)}</span>
                 </div>
                 <div class="player-info">
                     <span class="player-info-label">周薪:</span>
                     <span class="player-info-value">${Economy.formatMoney(player.salary || player.wage)}</span>
                 </div>
-                <hr style="margin: 1rem 0; border-color: var(--border-color);">
+                <hr style="margin:1rem 0; border-top:1px solid #888; border-left:none; border-right:none; border-bottom:none;">
                 <div class="player-info">
                     <span class="player-info-label">当前资金:</span>
                     <span class="player-info-value">${Economy.formatMoney(funds)}</span>
                 </div>
                 <div class="player-info">
                     <span class="player-info-label">购买后剩余:</span>
-                    <span class="player-info-value" style="color: ${remainingFunds >= 0 ? 'var(--success-color)' : 'var(--accent-color)'};">
+                    <span class="player-info-value" style="color:${remainingFunds >= 0 ? '#27ae60' : '#c0392b'}; font-weight:700;">
                         ${Economy.formatMoney(remainingFunds)}
                     </span>
                 </div>
@@ -404,8 +597,8 @@ const TransferModule = {
 
         document.getElementById('sell-modal-title').textContent = '出售球员确认';
         document.getElementById('sell-modal-player-info').innerHTML = `
-            <div class="details-card">
-                <h4 style="text-align: center; color: var(--primary-color);">${player.name}</h4>
+            <div class="details-card" style="background:#fff; color:#1a1a1a;">
+                <h4 style="text-align: center; color:#1a1a1a; font-weight:700; margin-bottom:0.75rem;">${player.name}</h4>
                 <div class="player-info">
                     <span class="player-info-label">位置:</span>
                     <span class="player-info-value">${CONFIG.POSITION_NAMES[player.position]}</span>
@@ -413,6 +606,10 @@ const TransferModule = {
                 <div class="player-info">
                     <span class="player-info-label">能力值:</span>
                     <span class="player-info-value">${player.ability}</span>
+                </div>
+                <div class="player-info">
+                    <span class="player-info-label">潜力:</span>
+                    <span class="player-info-value">${player.potential}</span>
                 </div>
                 <div class="player-info">
                     <span class="player-info-label">年龄:</span>
@@ -424,16 +621,16 @@ const TransferModule = {
                 </div>
                 <div class="player-info">
                     <span class="player-info-label">出售价格:</span>
-                    <span class="player-info-value" style="color: var(--success-color); font-weight: bold;">${Economy.formatMoney(sellPrice)}</span>
+                    <span class="player-info-value" style="color:#27ae60; font-weight:700;">${Economy.formatMoney(sellPrice)}</span>
                 </div>
-                <hr style="margin: 1rem 0; border-color: var(--border-color);">
+                <hr style="margin:1rem 0; border-top:1px solid #888; border-left:none; border-right:none; border-bottom:none;">
                 <div class="player-info">
                     <span class="player-info-label">当前资金:</span>
                     <span class="player-info-value">${Economy.formatMoney(funds)}</span>
                 </div>
                 <div class="player-info">
                     <span class="player-info-label">出售后资金:</span>
-                    <span class="player-info-value" style="color: var(--success-color); font-weight: bold;">
+                    <span class="player-info-value" style="color:#27ae60; font-weight:700;">
                         ${Economy.formatMoney(newFunds)}
                     </span>
                 </div>

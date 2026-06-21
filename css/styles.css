@@ -251,6 +251,7 @@ body {
    ======================================== */
 .details-card {
     background: var(--card-background);
+    color: #1a1a1a;
     padding: 1.5rem;
     border-radius: 8px;
     box-shadow: var(--shadow);
@@ -258,9 +259,36 @@ body {
 }
 
 .details-card h3 {
-    color: var(--primary-color);
+    color: #1a1a1a;
     margin-bottom: 1rem;
     font-size: 1.2rem;
+}
+
+.details-card h4 {
+    color: #1a1a1a;
+    margin-bottom: 0.75rem;
+    font-size: 1.1rem;
+}
+
+.details-card .player-info {
+    color: #1a1a1a;
+}
+
+.details-card .player-info-label {
+    color: #333;
+    font-weight: 600;
+}
+
+.details-card .player-info-value {
+    color: #1a1a1a;
+    font-weight: 600;
+}
+
+.details-card hr {
+    border-color: #888;
+    border-style: solid;
+    border-top: 1px solid #888;
+    margin: 1rem 0;
 }
 
 /* ========================================
@@ -1551,6 +1579,301 @@ body {
     }
     
     .modal-buttons .btn {
+        width: 100%;
+    }
+}
+
+/* ========================================
+   Retro transfer screen
+   ======================================== */
+#transfer-page {
+    color: #f2f7ff;
+}
+
+#transfer-page .transfer-container {
+    position: relative;
+    gap: 10px;
+    padding: 12px;
+    border: 2px solid #1b62d0;
+    background:
+        linear-gradient(135deg, rgba(13, 54, 160, 0.92), rgba(0, 15, 62, 0.96)),
+        radial-gradient(circle at 22% 36%, rgba(42, 213, 255, 0.32), transparent 30%),
+        radial-gradient(circle at 78% 24%, rgba(87, 128, 255, 0.3), transparent 34%);
+    box-shadow: inset 0 0 34px rgba(48, 195, 255, 0.35), 0 18px 44px rgba(0, 0, 0, 0.32);
+    overflow: hidden;
+}
+
+#transfer-page .transfer-container::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 5px),
+        linear-gradient(110deg, transparent 0 36%, rgba(255, 255, 255, 0.12) 37% 39%, transparent 40% 100%);
+    mix-blend-mode: screen;
+}
+
+#transfer-page .transfer-funds,
+#transfer-page .transfer-tabs,
+#transfer-page .transfer-view {
+    position: relative;
+    z-index: 1;
+}
+
+#transfer-page .transfer-funds {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+#transfer-page .transfer-funds h3 {
+    min-width: 320px;
+    margin: 0;
+    padding: 6px 12px;
+    border: 1px solid rgba(89, 170, 255, 0.72);
+    background: rgba(0, 5, 30, 0.78);
+    color: #ffffff;
+    font-size: 1rem;
+    text-align: left;
+}
+
+#transfer-page #transfer-funds-value {
+    color: #ffe200;
+    font-size: 1.12rem;
+}
+
+.transfer-tabs {
+    display: flex;
+    gap: 12px;
+    padding: 8px 0;
+}
+
+.transfer-tab,
+.transfer-action-btn {
+    border: 1px solid #551000;
+    border-radius: 50%;
+    background: radial-gradient(circle, #ff3737 0 35%, #a40016 58%, #230006 100%);
+    color: #ffe200;
+    cursor: pointer;
+    font-weight: 800;
+    text-shadow: 1px 1px 0 #6c0000;
+    box-shadow: 0 0 0 2px rgba(255, 211, 18, 0.18), inset 0 2px 8px rgba(255, 242, 0, 0.35);
+}
+
+.transfer-tab {
+    min-width: 140px;
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-size: 1rem;
+}
+
+.transfer-tab.active {
+    border-color: #ffe200;
+    color: #ffffff;
+    filter: saturate(1.16) brightness(1.08);
+}
+
+.transfer-view[hidden] {
+    display: none !important;
+}
+
+#transfer-page .transfer-market,
+#transfer-page .sell-section {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 12px;
+    min-height: 520px;
+    padding: 12px;
+    border: 1px solid rgba(89, 170, 255, 0.72);
+    border-radius: 0;
+    background: rgba(2, 16, 58, 0.68);
+    box-shadow: inset 0 0 18px rgba(39, 136, 255, 0.32);
+}
+
+#transfer-page .sell-section {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+#transfer-page .transfer-section-head {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+    background: rgba(0, 3, 24, 0.78);
+}
+
+#transfer-page .transfer-market h2,
+#transfer-page .sell-section h2 {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding: 4px 10px;
+    border: 0;
+    background: rgba(0, 3, 24, 0.78);
+    color: #ffffff;
+    font-size: 1.3rem;
+}
+
+#transfer-page .transfer-section-head h2 {
+    background: transparent;
+}
+
+#transfer-page .squad-count {
+    flex: 0 0 auto;
+    padding: 4px 12px;
+    color: #ffe864;
+    font-size: 1rem;
+    font-weight: 800;
+    text-align: right;
+    white-space: nowrap;
+    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.78);
+}
+
+#transfer-page .filter-section {
+    grid-column: 2;
+    grid-row: 2;
+    align-content: start;
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 12px;
+    border-radius: 0;
+    border: 1px solid rgba(61, 136, 255, 0.6);
+    background: rgba(0, 5, 30, 0.62);
+}
+
+#transfer-page .filter-group {
+    display: grid;
+    gap: 5px;
+}
+
+#transfer-page .filter-label {
+    color: #d6e8ff;
+    font-size: 0.88rem;
+}
+
+#transfer-page .filter-select {
+    width: 100%;
+    padding: 7px 8px;
+    border-radius: 0;
+    border: 1px solid rgba(90, 170, 255, 0.72);
+    background: rgba(0, 8, 36, 0.9);
+    color: #ffffff;
+}
+
+#transfer-page #refresh-market-btn {
+    border-radius: 999px;
+    border: 1px solid #551000;
+    background: radial-gradient(circle, #ff3737 0 35%, #a40016 58%, #230006 100%);
+    color: #ffe200;
+    font-weight: 800;
+}
+
+.transfer-table-wrap {
+    grid-column: 1;
+    grid-row: 2;
+    overflow-x: auto;
+    border: 1px solid rgba(61, 136, 255, 0.5);
+    background: rgba(0, 5, 30, 0.72);
+}
+
+.sell-section .transfer-table-wrap {
+    grid-column: 1;
+}
+
+.transfer-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    color: #ffffff;
+}
+
+.transfer-table thead {
+    background: linear-gradient(90deg, rgba(2, 12, 52, 0.95), rgba(11, 74, 184, 0.85));
+}
+
+.transfer-table th,
+.transfer-table td {
+    padding: 7px 8px;
+    border-bottom: 1px solid rgba(65, 154, 255, 0.42);
+    border-right: 1px solid rgba(65, 154, 255, 0.32);
+    text-align: left;
+    line-height: 1.15;
+    white-space: nowrap;
+}
+
+.transfer-table th {
+    color: #d6e8ff;
+    font-weight: 800;
+}
+
+.transfer-table tbody tr {
+    background: rgba(0, 5, 31, 0.76);
+}
+
+.transfer-table tbody tr:nth-child(even) {
+    background: rgba(0, 20, 78, 0.78);
+}
+
+.transfer-table tbody tr:hover {
+    background: rgba(0, 104, 211, 0.64);
+}
+
+.transfer-table .starting-row {
+    background: rgba(0, 62, 125, 0.86);
+}
+
+.transfer-table .insufficient-row,
+.transfer-table .locked-row {
+    opacity: 0.62;
+}
+
+.transfer-table .position-code,
+.transfer-table .transfer-player-name {
+    color: #ffe200;
+    font-weight: 800;
+}
+
+.transfer-action-btn {
+    min-width: 62px;
+    padding: 4px 10px;
+    border-radius: 999px;
+}
+
+.transfer-action-btn.sell {
+    background: radial-gradient(circle, #ffe245 0 34%, #c99b00 57%, #332100 100%);
+    color: #250800;
+    text-shadow: none;
+}
+
+.transfer-action-btn:disabled {
+    cursor: not-allowed;
+    filter: grayscale(0.75) brightness(0.74);
+}
+
+@media screen and (max-width: 900px) {
+    #transfer-page .transfer-market,
+    #transfer-page .sell-section {
+        grid-template-columns: 1fr;
+    }
+
+    #transfer-page .filter-section,
+    .transfer-table-wrap {
+        grid-column: 1;
+        grid-row: auto;
+    }
+
+    #transfer-page .transfer-funds {
+        justify-content: stretch;
+    }
+
+    #transfer-page .transfer-funds h3 {
+        min-width: 0;
         width: 100%;
     }
 }
