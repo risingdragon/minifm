@@ -405,11 +405,16 @@ const Storage = {
             if (parsed.leagues) {
                 parsed.leagues = parsed.leagues.map(l => {
                     const league = new League(l);
-                    league.teams = l.teams.map(t => {
+                    league.teams = (l.teams || []).map(t => {
                         const team = new Team(t);
-                        team.players = t.players.map(p => new Player(p));
+                        team.players = (t.players || []).map(p => new Player(p));
                         return team;
                     });
+                    league.teamsData = (l.teamsData || []).map(t => ({
+                        ...t,
+                        players: (t.players || []).map(p => new Player(p)),
+                        playersData: Array.isArray(t.playersData) ? t.playersData.map(p => new Player(p)) : t.playersData
+                    }));
                     return league;
                 });
             }

@@ -113,13 +113,15 @@
             <!-- 转会页面 -->
             <section id="transfer-page" class="page">
                 <div class="transfer-container">
-                    <!-- 资金和按钮同一行 -->
-                    <div style="display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:1rem;">
-                        <div class="transfer-funds" style="margin:0;">
-                            <h3 style="margin:0;">💰 可用资金: <span id="transfer-funds-value">¥0</span></h3>
+                    <!-- 转会状态和按钮 -->
+                    <div class="transfer-topbar">
+                        <div class="transfer-status">
+                            <span class="transfer-status-item">可用资金：<strong id="transfer-funds-value">¥0</strong></span>
+                            <span class="transfer-status-item" id="transfer-squad-count">球员数量：- / -</span>
+                            <span class="transfer-status-item" id="transfer-wage-total">工资总额：¥0 / 周</span>
                         </div>
 
-                        <div class="transfer-tabs" role="tablist" aria-label="转会操作" style="margin:0;">
+                        <div class="transfer-tabs" role="tablist" aria-label="转会操作">
                             <button class="transfer-tab active" type="button" data-transfer-view="buy" role="tab" aria-selected="true">
                                 买进球员
                             </button>
@@ -146,12 +148,10 @@
                                     </select>
                                 </div>
                                 <div class="filter-group">
-                                    <label class="filter-label">能力值筛选:</label>
-                                    <select id="ability-filter" class="filter-select">
-                                        <option value="all">全部能力</option>
-                                        <option value="high">高能力 (80+)</option>
-                                        <option value="medium">中等能力 (60-79)</option>
-                                        <option value="low">低能力 (&lt;60)</option>
+                                    <label class="filter-label">年龄筛选:</label>
+                                    <select id="age-filter" class="filter-select">
+                                        <option value="all">全部年龄</option>
+                                        <option value="under30">29岁以下</option>
                                     </select>
                                 </div>
                                 <button id="refresh-market-btn" class="btn btn-secondary btn-small">
@@ -169,10 +169,6 @@
                         <div class="sell-section">
                             <div class="transfer-section-head">
                                 <h2>卖出球员</h2>
-                                <div class="sell-status-line">
-                                    <span id="sell-squad-count" class="squad-count">球员数量：- / -</span>
-                                    <span id="sell-wage-total" class="squad-count">工资总额：¥0 / 周</span>
-                                </div>
                             </div>
                             <div id="sell-list" class="transfer-table-wrap">
                                 <p>暂无球员数据</p>

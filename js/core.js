@@ -748,7 +748,7 @@ class League {
         const matchesPerRound = teamCount / 2;
         const firstHalfRounds = [];
 
-        // 使用循环赛算法生成基础对阵，并交替主客场，避免固定球队连续主/客场。
+        // 使用循环赛算法生成基础对阵，并按轮次交替主客场，避免任意球队连续主/客场过长。
         let teamIndices = Array.from({ length: teamCount }, (_, i) => i);
 
         for (let round = 0; round < teamCount - 1; round++) {
@@ -757,7 +757,7 @@ class League {
             for (let match = 0; match < matchesPerRound; match++) {
                 const left = teamIndices[match];
                 const right = teamIndices[teamCount - 1 - match];
-                const shouldFlipHome = (round + match) % 2 === 1;
+                const shouldFlipHome = round % 2 === 1;
                 const home = shouldFlipHome ? right : left;
                 const away = shouldFlipHome ? left : right;
 
@@ -864,7 +864,28 @@ class League {
 
         // 如果有缓存数据，从缓存恢复
         if (this.teamsData) {
-            this.teams = this.teamsData.map(t => new Team(t));
+            this.teams = this.teamsData.map(t => {
+                const team = new Team(t);
+                const savedPlayers = Array.isArray(t.players) && t.players.length > 0
+                    ? t.players
+                    : (Array.isArray(t.playersData) ? t.playersData : []);
+
+                if (savedPlayers.length > 0) {
+                    const players = savedPlayers.map(p => p instanceof Player ? p : new Player(p));
+                    if (team.isPlayersLoaded) {
+                        team.players = players;
+                        team.playersData = null;
+                        if (!team.startingLineup || team.startingLineup.length === 0) {
+                            team.setDefaultLineup();
+                        }
+                    } else {
+                        team.players = [];
+                        team.playersData = players;
+                    }
+                }
+
+                return team;
+            });
             this.teamsData = null;
         }
 
@@ -904,6 +925,53 @@ class League {
             return;
         }
         this.generateSchedule();
+    }
+
+    repairScheduleIfNeeded(maxAllowedStreak = 5) {
+        if (!this.isTeamsLoaded || !Array.isArray(this.schedule) || this.schedule.length === 0) {
+            return false;
+        }
+
+        if (this.currentRound !== 1) {
+            return false;
+        }
+
+        const hasPlayedMatch = this.schedule.some(round =>
+            round.matches && round.matches.some(match => match.played)
+        );
+        if (hasPlayedMatch) {
+            return false;
+        }
+
+        const teamIds = this.teams.map(team => team.id);
+        const hasLongStreak = teamIds.some(teamId => {
+            let lastVenue = null;
+            let streak = 0;
+
+            for (const round of this.schedule) {
+                const match = round.matches && round.matches.find(item =>
+                    item.homeTeam === teamId || item.awayTeam === teamId
+                );
+                if (!match) continue;
+
+                const venue = match.homeTeam === teamId ? 'home' : 'away';
+                streak = venue === lastVenue ? streak + 1 : 1;
+                lastVenue = venue;
+
+                if (streak > maxAllowedStreak) {
+                    return true;
+                }
+            }
+
+            return false;
+        });
+
+        if (!hasLongStreak) {
+            return false;
+        }
+
+        this.generateSchedule();
+        return true;
     }
 
     // 检查联赛是否完全加载（球队+赛程）
@@ -951,7 +1019,7 @@ class League {
             season: this.season,
             standings: this.standings,
             isTeamsLoaded: this.isTeamsLoaded,
-            teamsData: this.isTeamsLoaded ? null : (this.teams.map(t => t.toJSON ? t.toJSON() : t) || this.teamsData)
+            teamsData: this.isTeamsLoaded ? null : (this.teamsData || this.teams.map(t => t.toJSON ? t.toJSON() : t))
         };
     }
 }

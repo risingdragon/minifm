@@ -95,6 +95,10 @@ const Game = {
         if (savedGame) {
             gameState = savedGame;
             gameState.isInitialized = true;
+
+            if (this.repairSchedulesIfNeeded()) {
+                Storage.save(gameState);
+            }
             
             // 启动自动保存
             Storage.startAutoSave();
@@ -103,6 +107,19 @@ const Game = {
             
             Navigation.navigateTo('team');
         }
+    },
+
+    repairSchedulesIfNeeded() {
+        if (!Array.isArray(gameState.leagues)) return false;
+
+        let repaired = false;
+        for (const league of gameState.leagues) {
+            if (league && typeof league.repairScheduleIfNeeded === 'function') {
+                repaired = league.repairScheduleIfNeeded() || repaired;
+            }
+        }
+
+        return repaired;
     }
 };
 

@@ -151,6 +151,10 @@ const TeamModule = {
                 const aStarting = gameState.playerTeam.startingLineup.includes(a.id) ? 0 : 1;
                 const bStarting = gameState.playerTeam.startingLineup.includes(b.id) ? 0 : 1;
                 comparison = aStarting - bStarting;
+                // 第二排序：位置（首发/替补内部按位置分组）
+                if (comparison === 0) {
+                    comparison = (positionOrder[a.position] || 99) - (positionOrder[b.position] || 99);
+                }
             } else if (this.sortBy === 'shirtNumber') {
                 comparison = (a.shirtNumber || 100) - (b.shirtNumber || 100);
             } else if (this.sortBy === 'name') {

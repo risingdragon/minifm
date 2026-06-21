@@ -5,7 +5,7 @@ const TransferModule = {
     // 当前筛选状态
     filters: {
         position: 'all',
-        ability: 'all',
+        age: 'all',
         sort: 'ability-desc'
     },
 
@@ -30,14 +30,12 @@ const TransferModule = {
         if (!gameState.isInitialized) {
             document.getElementById('transfer-list').innerHTML = '<p>请先开始新游戏</p>';
             document.getElementById('sell-list').innerHTML = '<p>请先开始新游戏</p>';
-            document.getElementById('transfer-funds-value').textContent = '0万';
-            this.updateSellStatus();
+            this.updateTransferStatus();
             this.updateTransferView();
             return;
         }
 
-        // 更新资金显示
-        document.getElementById('transfer-funds-value').textContent = Economy.formatMoney(gameState.playerTeam.cash);
+        this.updateTransferStatus();
 
         // 初始化筛选器事件
         this.initFilters();
@@ -48,16 +46,21 @@ const TransferModule = {
         this.updateTransferView();
     },
 
-    updateSellStatus() {
-        const countEl = document.getElementById('sell-squad-count');
-        const wageEl = document.getElementById('sell-wage-total');
-        if (!countEl && !wageEl) return;
+    updateTransferStatus() {
+        const fundsEl = document.getElementById('transfer-funds-value');
+        const countEl = document.getElementById('transfer-squad-count');
+        const wageEl = document.getElementById('transfer-wage-total');
+        if (!fundsEl && !countEl && !wageEl) return;
 
         const players = gameState.isInitialized ? gameState.playerTeam.players : [];
+        const funds = gameState.isInitialized ? gameState.playerTeam.cash : 0;
         const totalPlayers = players.length;
         const maxPlayers = CONFIG.SQUAD_MAX_SIZE;
         const totalWage = players.reduce((sum, player) => sum + (player.salary || player.wage || 0), 0);
 
+        if (fundsEl) {
+            fundsEl.textContent = Economy.formatMoney(funds);
+        }
         if (countEl) {
             countEl.textContent = `球员数量：${totalPlayers} / ${maxPlayers}`;
         }
@@ -106,14 +109,14 @@ const TransferModule = {
             positionFilter.setAttribute('data-initialized', 'true');
         }
 
-        // 能力值筛选
-        const abilityFilter = document.getElementById('ability-filter');
-        if (abilityFilter && !abilityFilter.hasAttribute('data-initialized')) {
-            abilityFilter.addEventListener('change', (e) => {
-                this.filters.ability = e.target.value;
+        // 年龄筛选
+        const ageFilter = document.getElementById('age-filter');
+        if (ageFilter && !ageFilter.hasAttribute('data-initialized')) {
+            ageFilter.addEventListener('change', (e) => {
+                this.filters.age = e.target.value;
                 this.renderTransferMarket();
             });
-            abilityFilter.setAttribute('data-initialized', 'true');
+            ageFilter.setAttribute('data-initialized', 'true');
         }
 
         // 刷新市场按钮
@@ -171,19 +174,9 @@ const TransferModule = {
             players = players.filter(p => p.position === this.filters.position);
         }
 
-        // 能力值筛选
-        if (this.filters.ability !== 'all') {
-            switch (this.filters.ability) {
-                case 'high':
-                    players = players.filter(p => p.ability >= 80);
-                    break;
-                case 'medium':
-                    players = players.filter(p => p.ability >= 60 && p.ability < 80);
-                    break;
-                case 'low':
-                    players = players.filter(p => p.ability < 60);
-                    break;
-            }
+        // 年龄筛选（29岁以下）
+        if (this.filters.age === 'under30') {
+            players = players.filter(p => p.age <= 29);
         }
 
         // 排序
@@ -262,19 +255,9 @@ const TransferModule = {
             players = players.filter(p => p.position === this.filters.position);
         }
 
-        // 能力值筛选
-        if (this.filters.ability !== 'all') {
-            switch (this.filters.ability) {
-                case 'high':
-                    players = players.filter(p => p.ability >= 80);
-                    break;
-                case 'medium':
-                    players = players.filter(p => p.ability >= 60 && p.ability < 80);
-                    break;
-                case 'low':
-                    players = players.filter(p => p.ability < 60);
-                    break;
-            }
+        // 年龄筛选（29岁以下）
+        if (this.filters.age === 'under30') {
+            players = players.filter(p => p.age <= 29);
         }
 
         // 按表头点击排序
@@ -395,7 +378,7 @@ const TransferModule = {
         const players = gameState.playerTeam.players;
         const startingLineup = gameState.playerTeam.startingLineup;
 
-        this.updateSellStatus();
+        this.updateTransferStatus();
 
         if (players.length === 0) {
             document.getElementById('sell-list').innerHTML = '<p class="message message-info">球队暂无球员</p>';

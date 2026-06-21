@@ -1614,11 +1614,40 @@ body {
     mix-blend-mode: screen;
 }
 
-#transfer-page .transfer-funds,
+#transfer-page .transfer-topbar,
 #transfer-page .transfer-tabs,
 #transfer-page .transfer-view {
     position: relative;
     z-index: 1;
+}
+
+#transfer-page .transfer-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+#transfer-page .transfer-status {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-width: 0;
+    padding: 6px 8px;
+    border: 1px solid rgba(89, 170, 255, 0.72);
+    background: rgba(0, 5, 30, 0.78);
+}
+
+#transfer-page .transfer-status-item {
+    flex: 0 0 auto;
+    padding: 2px 8px;
+    color: #ffffff;
+    font-size: 1rem;
+    font-weight: 800;
+    white-space: nowrap;
+    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.78);
 }
 
 #transfer-page .transfer-funds {
@@ -1723,24 +1752,9 @@ body {
     background: transparent;
 }
 
-#transfer-page .sell-status-line {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-    gap: 8px;
-    min-width: 0;
-}
-
-#transfer-page .squad-count {
-    flex: 0 0 auto;
-    padding: 4px 12px;
+#transfer-page #transfer-squad-count,
+#transfer-page #transfer-wage-total {
     color: #ffe864;
-    font-size: 1rem;
-    font-weight: 800;
-    text-align: right;
-    white-space: nowrap;
-    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.78);
 }
 
 #transfer-page .filter-section {
@@ -1866,6 +1880,20 @@ body {
 }
 
 @media screen and (max-width: 900px) {
+    #transfer-page .transfer-topbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    #transfer-page .transfer-status,
+    #transfer-page .transfer-tabs {
+        width: 100%;
+    }
+
+    #transfer-page .transfer-tabs {
+        justify-content: flex-start;
+    }
+
     #transfer-page .transfer-market,
     #transfer-page .sell-section {
         grid-template-columns: 1fr;
@@ -1877,14 +1905,6 @@ body {
         grid-row: auto;
     }
 
-    #transfer-page .transfer-funds {
-        justify-content: stretch;
-    }
-
-    #transfer-page .transfer-funds h3 {
-        min-width: 0;
-        width: 100%;
-    }
 }
 
 /* ========================================

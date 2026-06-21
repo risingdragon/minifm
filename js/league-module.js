@@ -18,6 +18,11 @@ const LeagueModule = {
             return;
         }
 
+        viewLeague.ensureFullLoad();
+        if (!viewLeague.standings || viewLeague.standings.length === 0) {
+            viewLeague.initStandings();
+        }
+
         const standings = viewLeague.getSortedStandings();
 
         // 标记升降级区域
@@ -86,4 +91,3 @@ const LeagueModule = {
         document.getElementById('league-table').innerHTML = html;
     }
 };
-
