@@ -31,7 +31,7 @@ const TransferModule = {
             document.getElementById('transfer-list').innerHTML = '<p>请先开始新游戏</p>';
             document.getElementById('sell-list').innerHTML = '<p>请先开始新游戏</p>';
             document.getElementById('transfer-funds-value').textContent = '0万';
-            this.updateSellSquadCount();
+            this.updateSellStatus();
             this.updateTransferView();
             return;
         }
@@ -48,13 +48,22 @@ const TransferModule = {
         this.updateTransferView();
     },
 
-    updateSellSquadCount() {
+    updateSellStatus() {
         const countEl = document.getElementById('sell-squad-count');
-        if (!countEl) return;
+        const wageEl = document.getElementById('sell-wage-total');
+        if (!countEl && !wageEl) return;
 
-        const totalPlayers = gameState.isInitialized ? gameState.playerTeam.players.length : 0;
+        const players = gameState.isInitialized ? gameState.playerTeam.players : [];
+        const totalPlayers = players.length;
         const maxPlayers = CONFIG.SQUAD_MAX_SIZE;
-        countEl.textContent = `球员数量：${totalPlayers} / ${maxPlayers}`;
+        const totalWage = players.reduce((sum, player) => sum + (player.salary || player.wage || 0), 0);
+
+        if (countEl) {
+            countEl.textContent = `球员数量：${totalPlayers} / ${maxPlayers}`;
+        }
+        if (wageEl) {
+            wageEl.textContent = `工资总额：${Economy.formatMoney(totalWage)} / 周`;
+        }
     },
 
     initTabs() {
@@ -346,7 +355,7 @@ const TransferModule = {
             this.sellSortOrder = this.sellSortOrder === 'asc' ? 'desc' : 'asc';
         } else {
             this.sellSortBy = sortBy;
-            this.sellSortOrder = ['ability', 'potential', 'age', 'sellPrice', 'shirtNumber'].includes(sortBy) ? 'desc' : 'asc';
+            this.sellSortOrder = ['ability', 'potential', 'age', 'sellPrice', 'wage'].includes(sortBy) ? 'desc' : 'asc';
         }
         this.renderSellList();
     },
@@ -386,6 +395,8 @@ const TransferModule = {
         const players = gameState.playerTeam.players;
         const startingLineup = gameState.playerTeam.startingLineup;
 
+        this.updateSellStatus();
+
         if (players.length === 0) {
             document.getElementById('sell-list').innerHTML = '<p class="message message-info">球队暂无球员</p>';
             return;
@@ -424,6 +435,8 @@ const TransferModule = {
                 comparison = A.age - B.age;
             } else if (sortContext.sortBy === 'sellPrice') {
                 comparison = this.calculateSellPrice(A) - this.calculateSellPrice(B);
+            } else if (sortContext.sortBy === 'wage') {
+                comparison = (A.salary || A.wage || 0) - (B.salary || B.wage || 0);
             }
             return sortContext.sortOrder === 'asc' ? comparison : -comparison;
         });
@@ -448,6 +461,7 @@ const TransferModule = {
                     <td>${player.ability}</td>
                     <td>${player.potential}</td>
                     <td>${player.age}</td>
+                    <td>${Economy.formatMoney(player.salary || player.wage)}</td>
                     <td>${Economy.formatMoney(sellPrice)}</td>
                     <td>
                         <button class="transfer-action-btn sell"
@@ -460,8 +474,6 @@ const TransferModule = {
             `;
         }).join('');
 
-        this.updateSellSquadCount();
-
         document.getElementById('sell-list').innerHTML = `
             <table class="transfer-table">
                 <thead>
@@ -473,6 +485,7 @@ const TransferModule = {
                         ${sellHeader('ability', '能力')}
                         ${sellHeader('potential', '潜力')}
                         ${sellHeader('age', '年龄')}
+                        ${sellHeader('wage', '周薪')}
                         ${sellHeader('sellPrice', '售价')}
                         <th>操作</th>
                     </tr>

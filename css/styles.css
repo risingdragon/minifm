@@ -1723,6 +1723,15 @@ body {
     background: transparent;
 }
 
+#transfer-page .sell-status-line {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-width: 0;
+}
+
 #transfer-page .squad-count {
     flex: 0 0 auto;
     padding: 4px 12px;
