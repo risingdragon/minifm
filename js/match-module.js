@@ -103,7 +103,7 @@ const MatchModule = {
                 <h3>第 ${currentRound} 轮比赛</h3>
                 <div class="player-info">
                     <span class="player-info-label">当前赛季:</span>
-                    <span class="player-info-value">第${gameState.currentSeason}赛季</span>
+                    <span class="player-info-value">第${currentLeague.season}赛季</span>
                 </div>
                 <div class="player-info">
                     <span class="player-info-label">当前联赛:</span>
@@ -619,7 +619,8 @@ const MatchModule = {
     },
 
     executePromotionRelegation() {
-        let resultMessage = `第${gameState.currentSeason}赛季结算完成！\n\n`;
+        const currentLeague = gameState.leagues.find(l => l.level === gameState.currentLeagueLevel);
+        let resultMessage = `第${currentLeague ? currentLeague.season : 1}赛季结算完成！\n\n`;
         let playerPromoted = false;
         let playerRelegated = false;
 
@@ -771,12 +772,13 @@ const MatchModule = {
     },
 
     startNewSeason() {
-        // 增加赛季数
-        gameState.currentSeason++;
+        // 以玩家所在联赛为准，统一所有联赛的赛季推进
+        const currentLeague = gameState.leagues.find(l => l.level === gameState.currentLeagueLevel);
+        const nextSeason = (currentLeague ? currentLeague.season : 1) + 1;
 
         // 为每个联赛重新生成赛程和积分榜
         for (const league of gameState.leagues) {
-            league.season = gameState.currentSeason;
+            league.season = nextSeason;
             league.currentRound = 1;
 
             // 重置球队统计数据

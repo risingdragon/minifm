@@ -50,6 +50,7 @@ const TeamModule = {
 
     renderTeamInfo() {
         const team = gameState.playerTeam;
+        const currentLeague = gameState.leagues.find(l => l.level === gameState.currentLeagueLevel);
         const nextMatchText = this.getNextMatchText();
 
         const retroDetailsHtml = `
@@ -61,7 +62,7 @@ const TeamModule = {
                     </div>
                 </div>
                 <div class="club-meta">
-                    <div><span>现在日期</span><strong>赛季 ${gameState.currentSeason} · 第 ${gameState.currentRound} 轮</strong></div>
+                    <div><span>现在日期</span><strong>赛季 ${currentLeague.season} · 第 ${currentLeague.currentRound} 轮</strong></div>
                     <div><span>流动资金</span><strong>${Economy.formatMoney(team.cash)}</strong></div>
                     <div><span>下一场比赛</span><strong>${nextMatchText}</strong></div>
                 </div>

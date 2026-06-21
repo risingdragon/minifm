@@ -964,8 +964,6 @@ let gameState = {
     playerTeam: null,
     leagues: [],
     currentLeagueLevel: 6,
-    currentSeason: 1,
-    currentRound: 1,
     transferMarket: [],
     lastSaveTime: null
 };

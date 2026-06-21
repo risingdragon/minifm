@@ -69,8 +69,6 @@ const Game = {
 
         // 设置游戏状态
         gameState.currentLeagueLevel = CONFIG.LEAGUE_LEVELS;
-        gameState.currentSeason = 1;
-        gameState.currentRound = 1;
         gameState.isInitialized = true;
 
         // 生成初始转会市场
