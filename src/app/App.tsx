@@ -310,13 +310,6 @@ function MatchPage({
           </div>
         ))}
       </div>
-
-      {roundComplete && (
-        <section className="action-row">
-          <button type="button" onClick={onGoStandings}>查看积分榜</button>
-          <button type="button" onClick={onNextRound}>进入下一轮</button>
-        </section>
-      )}
     </>
   );
 }
