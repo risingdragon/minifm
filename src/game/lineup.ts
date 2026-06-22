@@ -41,6 +41,10 @@ export function selectAutoLineup(team: Team, players: Player[]): Player[] {
       teamId: team.id,
       overall: 1,
       potential: 1,
+      marketValue: 0,
+      weeklyWage: 0,
+      contractYears: 0,
+      isListed: false,
       isStarter: true,
       isGeneratedFillIn: true,
     });

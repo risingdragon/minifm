@@ -3,6 +3,7 @@ import type { GameState, Team } from '../models/types';
 import { agePlayersForNewSeason } from './growth';
 import { selectLineupForAllTeams } from './lineup';
 import { calculateStandings } from './standings';
+import { createTransferMarket } from './transfer';
 
 export interface SeasonMovement {
   promoted: Team[];
@@ -40,6 +41,7 @@ export function createNextSeasonGame(game: GameState): GameState {
   });
   const nextLeagues = createLeagues(nextSeason);
   const { leaguesWithSchedule, matches } = createSchedules(nextLeagues, nextTeams);
+  const nextPlayers = selectLineupForAllTeams(nextTeams, agePlayersForNewSeason(game.players.filter((player) => !player.isGeneratedFillIn)));
 
   return {
       ...game,
@@ -50,8 +52,10 @@ export function createNextSeasonGame(game: GameState): GameState {
       },
       leagues: leaguesWithSchedule,
       teams: nextTeams,
-      players: selectLineupForAllTeams(nextTeams, agePlayersForNewSeason(game.players.filter((player) => !player.isGeneratedFillIn))),
+      players: nextPlayers,
       matches,
+      transferMarket: createTransferMarket(nextPlayers, game.userTeamId, nextSeason, 1),
+      lastFinanceSummary: { ticketIncome: 0, wageExpense: 0, net: 0 },
       lastGrowthChanges: [],
       seasonGrowthChanges: [],
     };

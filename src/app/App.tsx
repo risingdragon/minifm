@@ -5,6 +5,7 @@ import { selectAutoLineup, detectLineupWarnings } from '../game/lineup';
 import { getSeasonMovement } from '../game/season';
 import { simulateRound } from '../game/simulator';
 import { calculateStandings } from '../game/standings';
+import { buyPlayer, countRegularPlayers, createTransferMarket } from '../game/transfer';
 import type { GameState, League, Match, Player, PlayerGrowthChange, Standing, Team, View } from '../models/types';
 
 export function App() {
@@ -46,11 +47,14 @@ export function App() {
   }
 
   function handleSimulateRound(): void {
-    const result = simulateRound(userLeague.currentRound, game.matches, game.teams, game.players);
+    const result = simulateRound(userLeague.currentRound, game.matches, game.teams, game.players, game.leagueSystem.season, userTeam.id);
     setGame({
       ...game,
+      teams: result.teams,
       matches: result.matches,
       players: result.players,
+      financeLogs: [...game.financeLogs, ...result.financeLogs],
+      lastFinanceSummary: result.financeSummary,
       lastGrowthChanges: result.growthChanges,
       seasonGrowthChanges: [...(game.seasonGrowthChanges || []), ...result.growthChanges],
     });
@@ -66,8 +70,13 @@ export function App() {
       ...league,
       currentRound: league.currentRound + 1,
     }));
+    const nextRound = findLeague(leagues, userLeague.id).currentRound;
 
-    setGame({ ...game, leagues });
+    setGame({
+      ...game,
+      leagues,
+      transferMarket: createTransferMarket(game.players, game.userTeamId, game.leagueSystem.season, nextRound),
+    });
     setView(leagues.every((league) => league.currentRound > league.totalRounds) ? 'seasonEnd' : 'dashboard');
   }
 
@@ -89,6 +98,10 @@ export function App() {
     }
 
     handleSimulateRound();
+  }
+
+  function handleBuyPlayer(playerId: string): void {
+    setGame((current) => buyPlayer(current, playerId));
   }
 
   function handleReset(): void {
@@ -113,6 +126,7 @@ export function App() {
           <NavButton label="阵容" active={view === 'squad'} onClick={() => setView('squad')} />
           <NavButton label="比赛" active={view === 'match'} onClick={() => setView('match')} />
           <NavButton label="积分榜" active={view === 'standings'} onClick={() => setView('standings')} />
+          <NavButton label="转会" active={view === 'transfers'} onClick={() => setView('transfers')} />
         </nav>
 
         <button className="continue-button" type="button" onClick={handleContinue}>
@@ -164,6 +178,14 @@ export function App() {
           />
         )}
 
+        {view === 'transfers' && (
+          <TransferMarketPageSorted
+            game={game}
+            userTeam={userTeam}
+            onBuyPlayer={handleBuyPlayer}
+          />
+        )}
+
         {view === 'seasonEnd' && (
           <SeasonEndPage
             game={game}
@@ -199,13 +221,6 @@ function DashboardPage({
   const opponent = game.teams.find((team) => team.id === opponentId);
   const lineupWarnings = detectLineupWarnings(userTeam, game.players);
 
-  const positionNames: Record<string, string> = {
-    GK: '门将',
-    DF: '后卫',
-    MF: '中场',
-    FW: '前锋',
-  };
-
   return (
     <>
       <header className="page-header hero-band">
@@ -223,21 +238,17 @@ function DashboardPage({
       {lineupWarnings.length > 0 && (
         <section className="warning-band">
           <div className="warning-header">
-            <span className="warning-icon">⚠</span>
             <span>阵容提示</span>
           </div>
           <div className="warning-list">
             {lineupWarnings.slice(0, 3).map((warning, index) => (
               <div key={index} className="warning-item">
-                <span className="warning-position">{positionNames[warning.position]}</span>
+                <span className="warning-position">{warning.position}</span>
                 <span className="warning-substitute">{warning.substitute.name} ({warning.substitute.overall})</span>
                 <span className="warning-arrow">→</span>
                 <span className="warning-starter">{warning.starter.name} ({warning.starter.overall})</span>
               </div>
             ))}
-            {lineupWarnings.length > 3 && (
-              <div className="warning-more">还有 {lineupWarnings.length - 3} 个位置需要调整</div>
-            )}
           </div>
         </section>
       )}
@@ -246,12 +257,12 @@ function DashboardPage({
         <InfoPanel title="所在级别">
           <strong>{formatLeagueLevel(userLeague)}</strong>
         </InfoPanel>
+        <InfoPanel title="现金余额">
+          <strong>{formatMoney(userTeam.balance)}</strong>
+        </InfoPanel>
         <InfoPanel title="下一场">
           <strong>{opponent ? opponent.name : '赛季结束'}</strong>
           <span>{userMatch ? formatVenue(userMatch, userTeam.id) : '对手尚未确定'}</span>
-        </InfoPanel>
-        <InfoPanel title="首发人数">
-          <strong>{game.players.filter((player) => player.teamId === userTeam.id && player.isStarter).length} / 11</strong>
         </InfoPanel>
       </section>
     </>
@@ -283,6 +294,9 @@ function SquadPage({ team, league, players, onAutoLineup }: { team: Team; league
               <th>位置</th>
               <th>能力</th>
               <th>潜力</th>
+              <th>身价</th>
+              <th>周薪</th>
+              <th>合同</th>
             </tr>
           </thead>
           <tbody>
@@ -294,6 +308,9 @@ function SquadPage({ team, league, players, onAutoLineup }: { team: Team; league
                 <td>{player.position}</td>
                 <td><strong>{player.overall}</strong></td>
                 <td>{player.potential}</td>
+                <td>{formatMoney(player.marketValue)}</td>
+                <td>{formatMoney(player.weeklyWage)}</td>
+                <td>{player.contractYears} 年</td>
               </tr>
             ))}
           </tbody>
@@ -347,9 +364,211 @@ function MatchPage({
         ))}
       </div>
 
-      {roundComplete && <GrowthSummary changes={game.lastGrowthChanges ?? []} players={userPlayers} />}
+      {roundComplete && (
+        <>
+          <FinanceSummaryPanel summary={game.lastFinanceSummary ?? { ticketIncome: 0, wageExpense: 0, net: 0 }} />
+          <GrowthSummary changes={game.lastGrowthChanges ?? []} players={userPlayers} />
+        </>
+      )}
     </>
   );
+}
+
+function TransferMarketPage({ game, userTeam, onBuyPlayer }: { game: GameState; userTeam: Team; onBuyPlayer: (playerId: string) => void }) {
+  const [sort, setSort] = useState<TransferSortState>({ key: 'marketValue', direction: 'desc' });
+  const marketPlayers = game.transferMarket.listedPlayerIds
+    .map((playerId) => game.players.find((player) => player.id === playerId))
+    .filter((player): player is Player => Boolean(player))
+    .sort((a, b) => compareTransferPlayers(a, b, game.teams, sort));
+
+  function handleSort(key: TransferSortKey): void {
+    setSort((current) => ({
+      key,
+      direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
+    }));
+  }
+
+  return (
+    <>
+      <header className="page-header">
+        <div>
+          <span className="eyebrow">转会市场</span>
+          <h1>可购买球员</h1>
+          <p>当前余额：{formatMoney(userTeam.balance)}</p>
+        </div>
+      </header>
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>球员</th>
+              <th>球队</th>
+              <th>年龄</th>
+              <th>位置</th>
+              <th>能力</th>
+              <th>潜力</th>
+              <th>身价</th>
+              <th>周薪</th>
+              <th>合同</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {marketPlayers.map((player) => {
+              const seller = findTeam(game.teams, player.teamId);
+              const cannotBuy = userTeam.balance < player.marketValue || countRegularPlayers(game.players, seller.id) <= 11;
+              return (
+                <tr key={player.id}>
+                  <td><strong>{player.name}</strong></td>
+                  <td>{seller.name}</td>
+                  <td>{player.age}</td>
+                  <td>{player.position}</td>
+                  <td>{player.overall}</td>
+                  <td>{player.potential}</td>
+                  <td>{formatMoney(player.marketValue)}</td>
+                  <td>{formatMoney(player.weeklyWage)}</td>
+                  <td>{player.contractYears} 年</td>
+                  <td>
+                    <button type="button" disabled={cannotBuy} onClick={() => onBuyPlayer(player.id)}>购买</button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+function TransferMarketPageSorted({ game, userTeam, onBuyPlayer }: { game: GameState; userTeam: Team; onBuyPlayer: (playerId: string) => void }) {
+  const [sort, setSort] = useState<TransferSortState>({ key: 'marketValue', direction: 'desc' });
+  const marketPlayers = game.transferMarket.listedPlayerIds
+    .map((playerId) => game.players.find((player) => player.id === playerId))
+    .filter((player): player is Player => Boolean(player))
+    .sort((a, b) => compareTransferPlayers(a, b, game.teams, sort));
+
+  function handleSort(key: TransferSortKey): void {
+    setSort((current) => ({
+      key,
+      direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
+    }));
+  }
+
+  return (
+    <>
+      <header className="page-header">
+        <div>
+          <span className="eyebrow">转会市场</span>
+          <h1>可购买球员</h1>
+          <p>当前余额：{formatMoney(userTeam.balance)}</p>
+        </div>
+      </header>
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <SortableHeader label="球员" sortKey="name" sort={sort} onSort={handleSort} />
+              <SortableHeader label="球队" sortKey="team" sort={sort} onSort={handleSort} />
+              <SortableHeader label="年龄" sortKey="age" sort={sort} onSort={handleSort} />
+              <SortableHeader label="位置" sortKey="position" sort={sort} onSort={handleSort} />
+              <SortableHeader label="能力" sortKey="overall" sort={sort} onSort={handleSort} />
+              <SortableHeader label="潜力" sortKey="potential" sort={sort} onSort={handleSort} />
+              <SortableHeader label="身价" sortKey="marketValue" sort={sort} onSort={handleSort} />
+              <SortableHeader label="周薪" sortKey="weeklyWage" sort={sort} onSort={handleSort} />
+              <SortableHeader label="合同" sortKey="contractYears" sort={sort} onSort={handleSort} />
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {marketPlayers.map((player) => {
+              const seller = findTeam(game.teams, player.teamId);
+              const cannotBuy = userTeam.balance < player.marketValue || countRegularPlayers(game.players, seller.id) <= 11;
+              return (
+                <tr key={player.id}>
+                  <td><strong>{player.name}</strong></td>
+                  <td>{seller.name}</td>
+                  <td>{player.age}</td>
+                  <td>{player.position}</td>
+                  <td>{player.overall}</td>
+                  <td>{player.potential}</td>
+                  <td>{formatMoney(player.marketValue)}</td>
+                  <td>{formatMoney(player.weeklyWage)}</td>
+                  <td>{player.contractYears} 年</td>
+                  <td>
+                    <button type="button" disabled={cannotBuy} onClick={() => onBuyPlayer(player.id)}>购买</button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+type TransferSortKey = 'name' | 'team' | 'age' | 'position' | 'overall' | 'potential' | 'marketValue' | 'weeklyWage' | 'contractYears';
+type TransferSortState = {
+  key: TransferSortKey;
+  direction: 'asc' | 'desc';
+};
+
+function SortableHeader({
+  label,
+  sortKey,
+  sort,
+  onSort,
+}: {
+  label: string;
+  sortKey: TransferSortKey;
+  sort: TransferSortState;
+  onSort: (key: TransferSortKey) => void;
+}) {
+  const active = sort.key === sortKey;
+  return (
+    <th>
+      <button className={active ? 'sort-header active' : 'sort-header'} type="button" onClick={() => onSort(sortKey)}>
+        <span>{label}</span>
+        <span aria-hidden="true">{active ? (sort.direction === 'asc' ? '↑' : '↓') : '↕'}</span>
+      </button>
+    </th>
+  );
+}
+
+function compareTransferPlayers(a: Player, b: Player, teams: Team[], sort: TransferSortState): number {
+  const direction = sort.direction === 'asc' ? 1 : -1;
+  const aValue = getTransferSortValue(a, teams, sort.key);
+  const bValue = getTransferSortValue(b, teams, sort.key);
+  const result =
+    typeof aValue === 'number' && typeof bValue === 'number'
+      ? aValue - bValue
+      : String(aValue).localeCompare(String(bValue), 'zh-CN');
+
+  return (result || a.name.localeCompare(b.name, 'zh-CN')) * direction;
+}
+
+function getTransferSortValue(player: Player, teams: Team[], key: TransferSortKey): string | number {
+  switch (key) {
+    case 'name':
+      return player.name;
+    case 'team':
+      return teams.find((team) => team.id === player.teamId)?.name ?? '';
+    case 'age':
+      return player.age;
+    case 'position':
+      return player.position;
+    case 'overall':
+      return player.overall;
+    case 'potential':
+      return player.potential;
+    case 'marketValue':
+      return player.marketValue;
+    case 'weeklyWage':
+      return player.weeklyWage;
+    case 'contractYears':
+      return player.contractYears;
+  }
 }
 
 function StandingsPage({
@@ -418,15 +637,10 @@ function SeasonEndPage({
   const userLeagueStandings = getStandingsByLeague(game)[userLeague.id] ?? [];
   const userLeagueChampionStanding = userLeagueStandings[0];
   const userLeagueChampion = userLeagueChampionStanding ? findTeam(game.teams, userLeagueChampionStanding.teamId) : undefined;
-
-  const userTeamPlayerIds = new Set(game.players.filter((p) => p.teamId === userTeam.id).map((p) => p.id));
-  const aggregatedChanges = aggregateGrowthChanges(seasonGrowthChanges).filter((c) => userTeamPlayerIds.has(c.playerId));
-  const topGrowth = aggregatedChanges.filter((c) => c.delta > 0).sort((a, b) => b.delta - a.delta).slice(0, 3);
-  const topDecline = aggregatedChanges.filter((c) => c.delta < 0).sort((a, b) => a.delta - b.delta).slice(0, 3);
-
-  const getPlayerName = (playerId: string): string => {
-    return game.players.find((p) => p.id === playerId)?.name || playerId;
-  };
+  const userTeamPlayerIds = new Set(game.players.filter((player) => player.teamId === userTeam.id).map((player) => player.id));
+  const aggregatedChanges = aggregateGrowthChanges(seasonGrowthChanges).filter((change) => userTeamPlayerIds.has(change.playerId));
+  const topGrowth = aggregatedChanges.filter((change) => change.delta > 0).sort((a, b) => b.delta - a.delta).slice(0, 3);
+  const topDecline = aggregatedChanges.filter((change) => change.delta < 0).sort((a, b) => a.delta - b.delta).slice(0, 3);
 
   return (
     <>
@@ -434,9 +648,7 @@ function SeasonEndPage({
         <div>
           <span className="eyebrow">第 {game.leagueSystem.season} 赛季结束</span>
           <h1>{userTeam.name} 排名第 {userRank || '-'}</h1>
-          <p>
-            {formatLeagueLevel(userLeague)}冠军：{userLeagueChampion?.name ?? '待定'}。
-          </p>
+          <p>{formatLeagueLevel(userLeague)}冠军：{userLeagueChampion?.name ?? '待定'}。</p>
         </div>
       </header>
 
@@ -460,41 +672,37 @@ function SeasonEndPage({
           <h2>球员能力变化</h2>
         </div>
         <div className="growth-summary-grid">
-          <div className="growth-summary-section">
-            <h3>成长最快</h3>
-            {topGrowth.length === 0 ? (
-              <p className="muted">本赛季无成长球员。</p>
-            ) : (
-              <div className="growth-list">
-                {topGrowth.map((change) => (
-                  <div className="growth-item" key={change.playerId}>
-                    <span>{getPlayerName(change.playerId)}</span>
-                    <strong className="growth-up">+{change.delta}</strong>
-                    <small>{change.previousOverall} → {change.nextOverall}</small>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="growth-summary-section">
-            <h3>衰退最多</h3>
-            {topDecline.length === 0 ? (
-              <p className="muted">本赛季无衰退球员。</p>
-            ) : (
-              <div className="growth-list">
-                {topDecline.map((change) => (
-                  <div className="growth-item" key={change.playerId}>
-                    <span>{getPlayerName(change.playerId)}</span>
-                    <strong className="growth-down">{change.delta}</strong>
-                    <small>{change.previousOverall} → {change.nextOverall}</small>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <SeasonGrowthList title="成长最快" changes={topGrowth} players={game.players} positive />
+          <SeasonGrowthList title="衰退最大" changes={topDecline} players={game.players} />
         </div>
       </section>
+
+      <section className="action-row">
+        <button type="button" onClick={onStartNextSeason}>开启新赛季</button>
+        <button type="button" onClick={onReset}>重新开始</button>
+      </section>
     </>
+  );
+}
+
+function SeasonGrowthList({ title, changes, players, positive = false }: { title: string; changes: PlayerGrowthChange[]; players: Player[]; positive?: boolean }) {
+  return (
+    <div className="growth-summary-section">
+      <h3>{title}</h3>
+      {changes.length === 0 ? (
+        <p className="muted">暂无变化。</p>
+      ) : (
+        <div className="growth-list">
+          {changes.map((change) => (
+            <div className="growth-item" key={change.playerId}>
+              <span>{players.find((player) => player.id === change.playerId)?.name ?? change.playerId}</span>
+              <strong className={positive ? 'growth-up' : 'growth-down'}>{positive ? '+' : ''}{change.delta}</strong>
+              <small>{change.previousOverall} → {change.nextOverall}</small>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -529,6 +737,22 @@ function GrowthSummary({ changes, players }: { changes: PlayerGrowthChange[]; pl
           })}
         </div>
       )}
+    </section>
+  );
+}
+
+function FinanceSummaryPanel({ summary }: { summary: { ticketIncome: number; wageExpense: number; net: number } }) {
+  return (
+    <section className="finance-panel">
+      <div>
+        <span className="eyebrow">财政</span>
+        <h2>本轮收支</h2>
+      </div>
+      <div className="finance-grid">
+        <InfoPanel title="门票收入"><strong>{formatMoney(summary.ticketIncome)}</strong></InfoPanel>
+        <InfoPanel title="周薪支出"><strong>{formatMoney(summary.wageExpense)}</strong></InfoPanel>
+        <InfoPanel title="净变化"><strong>{formatMoney(summary.net)}</strong></InfoPanel>
+      </div>
     </section>
   );
 }
@@ -686,4 +910,8 @@ function renderStandingZone(league: League, index: number, totalTeams: number): 
 
 function positionWeight(position: Player['position']): number {
   return ['GK', 'DF', 'MF', 'FW'].indexOf(position);
+}
+
+function formatMoney(value: number): string {
+  return `¥${Math.round(value).toLocaleString('zh-CN')}`;
 }

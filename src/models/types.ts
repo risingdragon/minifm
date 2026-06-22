@@ -8,6 +8,10 @@ export interface Player {
   teamId: string;
   overall: number;
   potential: number;
+  marketValue: number;
+  weeklyWage: number;
+  contractYears: number;
+  isListed: boolean;
   isStarter: boolean;
   isGeneratedFillIn?: boolean;
 }
@@ -25,6 +29,10 @@ export interface Team {
   shortName: string;
   leagueId: string;
   players: string[];
+  balance: number;
+  stadiumCapacity: number;
+  ticketPrice: number;
+  fanBase: number;
   isUserControlled: boolean;
   primaryColor: string;
 }
@@ -72,6 +80,30 @@ export interface Standing {
   points: number;
 }
 
+export interface TransferMarket {
+  listedPlayerIds: string[];
+  lastRefreshRound: number;
+  lastRefreshSeason: string;
+}
+
+export type FinanceLogType = 'ticketIncome' | 'wageExpense' | 'transferFee';
+
+export interface FinanceLog {
+  id: string;
+  season: string;
+  round: number | null;
+  teamId: string;
+  type: FinanceLogType;
+  amount: number;
+  description: string;
+}
+
+export interface FinanceSummary {
+  ticketIncome: number;
+  wageExpense: number;
+  net: number;
+}
+
 export interface GameState {
   leagueSystem: LeagueSystem;
   leagues: League[];
@@ -79,8 +111,11 @@ export interface GameState {
   players: Player[];
   matches: Match[];
   userTeamId: string;
+  transferMarket: TransferMarket;
+  financeLogs: FinanceLog[];
+  lastFinanceSummary?: FinanceSummary;
   lastGrowthChanges?: PlayerGrowthChange[];
   seasonGrowthChanges?: PlayerGrowthChange[];
 }
 
-export type View = 'dashboard' | 'squad' | 'match' | 'standings' | 'seasonEnd';
+export type View = 'dashboard' | 'squad' | 'match' | 'standings' | 'transfers' | 'seasonEnd';

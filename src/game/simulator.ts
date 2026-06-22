@@ -1,14 +1,19 @@
-import type { Match, Player, PlayerGrowthChange, Team } from '../models/types';
+import type { FinanceLog, FinanceSummary, Match, Player, PlayerGrowthChange, Team } from '../models/types';
+import { settleMatchFinances } from './finance';
 import { settleGrowthAfterMatch } from './growth';
 import { getStarters, selectAutoLineup } from './lineup';
 
-export function simulateRound(round: number, matches: Match[], teams: Team[], players: Player[]): {
+export function simulateRound(round: number, matches: Match[], teams: Team[], players: Player[], season = '1', userTeamId?: string): {
   matches: Match[];
+  teams: Team[];
   players: Player[];
   growthChanges: PlayerGrowthChange[];
+  financeLogs: FinanceLog[];
+  financeSummary: FinanceSummary;
 } {
   let updatedPlayers = teams.flatMap((team) => selectAutoLineup(team, players));
-  const growthChanges: PlayerGrowthChange[] = [];
+  let updatedTeams = teams;
+  const newlyPlayedMatches: Match[] = [];
   const updatedMatches = matches.map((match) => {
     if (match.round !== round || match.status === 'played') {
       return match;
@@ -23,23 +28,48 @@ export function simulateRound(round: number, matches: Match[], teams: Team[], pl
 
     const homePower = calculateTeamPower(homeTeam.id, updatedPlayers) + 3;
     const awayPower = calculateTeamPower(awayTeam.id, updatedPlayers);
-    const homeScore = generateScore(homePower, awayPower);
-    const awayScore = generateScore(awayPower, homePower);
-
-    return {
+    const playedMatch = {
       ...match,
-      homeScore,
-      awayScore,
+      homeScore: generateScore(homePower, awayPower),
+      awayScore: generateScore(awayPower, homePower),
       status: 'played' as const,
     };
+
+    newlyPlayedMatches.push(playedMatch);
+    return playedMatch;
   });
 
-  // 每轮比赛结束后统一结算成长，只执行一次
+  if (newlyPlayedMatches.length === 0) {
+    return {
+      matches: updatedMatches,
+      teams: updatedTeams,
+      players: updatedPlayers,
+      growthChanges: [],
+      financeLogs: [],
+      financeSummary: { ticketIncome: 0, wageExpense: 0, net: 0 },
+    };
+  }
+
   const growthResult = settleGrowthAfterMatch(updatedPlayers);
   updatedPlayers = growthResult.players;
-  growthChanges.push(...growthResult.changes);
 
-  return { matches: updatedMatches, players: updatedPlayers, growthChanges };
+  const financeResult = settleMatchFinances({
+    matches: newlyPlayedMatches,
+    teams: updatedTeams,
+    players: updatedPlayers,
+    season,
+    round,
+  });
+  updatedTeams = financeResult.teams;
+
+  return {
+    matches: updatedMatches,
+    teams: updatedTeams,
+    players: updatedPlayers,
+    growthChanges: growthResult.changes,
+    financeLogs: financeResult.logs,
+    financeSummary: userTeamId ? financeResult.summaryByTeam[userTeamId] ?? { ticketIncome: 0, wageExpense: 0, net: 0 } : { ticketIncome: 0, wageExpense: 0, net: 0 },
+  };
 }
 
 export function calculateTeamPower(teamId: string, players: Player[]): number {

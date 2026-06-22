@@ -1,4 +1,5 @@
 import type { Player, PlayerGrowthChange } from '../models/types';
+import { refreshPlayerFinance } from './finance';
 
 export function normalizePlayer(player: Player): Player {
   const potential = clamp(player.potential ?? inferPotential(player), 1, 200);
@@ -35,10 +36,10 @@ export function settleGrowthAfterMatch(players: Player[]): {
       });
     }
 
-    return {
+    return refreshPlayerFinance({
       ...normalized,
       overall: nextOverall,
-    };
+    });
   });
 
   return { players: nextPlayers, changes };
@@ -52,10 +53,11 @@ export function agePlayersForNewSeason(players: Player[]): Player[] {
       return normalized;
     }
 
-    return {
+    return refreshPlayerFinance({
       ...normalized,
       age: normalized.age + 1,
-    };
+      contractYears: Math.max(0, normalized.contractYears - 1),
+    });
   });
 }
 

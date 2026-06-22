@@ -62,6 +62,26 @@ th {
   background: #f7faf8;
 }
 
+.sort-header {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0;
+  background: transparent;
+  color: #526058;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.sort-header:hover:not(:disabled),
+.sort-header.active {
+  background: transparent;
+  color: #193d2f;
+  transform: none;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);

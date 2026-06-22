@@ -1,6 +1,8 @@
 import type { GameState, League, Match, Player, Position, Team } from '../models/types';
 import { createDoubleRoundRobinSchedule } from '../game/schedule';
 import { selectLineupForAllTeams } from '../game/lineup';
+import { calculateMarketValue, calculateWeeklyWage } from '../game/finance';
+import { createTransferMarket } from '../game/transfer';
 
 const LEAGUE_DEFINITIONS = [
   { id: 'league-1', name: 'miniFM 一级联赛', level: 1 },
@@ -70,6 +72,7 @@ export function createNewGame(): GameState {
   }));
   const { leaguesWithSchedule, matches } = createSchedules(leagues, teamsWithPlayers);
   const playersWithLineups = selectLineupForAllTeams(teamsWithPlayers, players);
+  const transferMarket = createTransferMarket(playersWithLineups, userTeam.id, '1', 1);
 
   return {
     leagueSystem: {
@@ -85,6 +88,11 @@ export function createNewGame(): GameState {
     players: playersWithLineups,
     matches,
     userTeamId: userTeam.id,
+    transferMarket,
+    financeLogs: [],
+    lastFinanceSummary: { ticketIncome: 0, wageExpense: 0, net: 0 },
+    lastGrowthChanges: [],
+    seasonGrowthChanges: [],
   };
 }
 
@@ -122,6 +130,10 @@ function createTeams(leagues: League[]): Team[] {
       shortName,
       leagueId: league.id,
       players: [],
+      balance: league.level === 1 ? 5000000 + teamIndex * 120000 : 1800000 + teamIndex * 70000,
+      stadiumCapacity: league.level === 1 ? 22000 + teamIndex * 450 : 12000 + teamIndex * 320,
+      ticketPrice: league.level === 1 ? 38 : 24,
+      fanBase: Math.min(100, league.level === 1 ? 58 + teamIndex : 34 + teamIndex),
       isUserControlled: false,
       primaryColor,
     })),
@@ -141,6 +153,7 @@ function createTeamPlayers(teamId: string, teamIndex: number, leagueId: string):
     const potentialBase = overall + (age <= 20 ? 24 : age <= 24 ? 16 : age <= 29 ? 8 : 2);
     const potentialSwing = (teamIndex * 5 + index * 3) % 10;
     const potential = Math.max(overall, Math.min(200, potentialBase + potentialSwing));
+    const marketValue = calculateMarketValue({ age, overall, potential });
 
     return {
       id: `${teamId}-player-${index + 1}`,
@@ -150,6 +163,10 @@ function createTeamPlayers(teamId: string, teamIndex: number, leagueId: string):
       teamId,
       overall,
       potential,
+      marketValue,
+      weeklyWage: calculateWeeklyWage(marketValue),
+      contractYears: 1 + ((teamIndex + index) % 5),
+      isListed: (teamIndex * 3 + index) % 4 === 0,
       isStarter: false,
     };
   });
