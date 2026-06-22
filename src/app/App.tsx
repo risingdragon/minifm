@@ -291,10 +291,6 @@ function MatchPage({
           <span className="eyebrow">第 {game.league.currentRound} 轮</span>
           <h1>比赛中心</h1>
         </div>
-        <div className="header-actions">
-          <button type="button" disabled={roundComplete} onClick={onSimulate}>模拟本轮</button>
-          <button type="button" disabled={!roundComplete} onClick={onNextRound}>下一轮</button>
-        </div>
       </header>
 
       {userMatch && (
@@ -308,9 +304,9 @@ function MatchPage({
       <div className="fixture-list">
         {currentRoundMatches.map((match) => (
           <div className="fixture" key={match.id}>
-            <span>{findTeam(game.teams, match.homeTeamId).shortName}</span>
+            <span>{findTeam(game.teams, match.homeTeamId).name}</span>
             <strong>{match.status === 'played' ? `${match.homeScore} - ${match.awayScore}` : 'vs'}</strong>
-            <span>{findTeam(game.teams, match.awayTeamId).shortName}</span>
+            <span>{findTeam(game.teams, match.awayTeamId).name}</span>
           </div>
         ))}
       </div>
@@ -347,7 +343,6 @@ function StandingsPage({
           <span className="eyebrow">第 {Math.min(currentRound, totalRounds)} 轮后</span>
           <h1>积分榜</h1>
         </div>
-        <button type="button" disabled={!roundComplete} onClick={onNextRound}>进入下一轮</button>
       </header>
       <StandingsTable teams={teams} standings={standings} />
     </>
