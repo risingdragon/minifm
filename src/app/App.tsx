@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import jerseyImage from '../../assets/lineup-jersey.png';
-import { resetGame, loadGame, saveGame } from '../data/storage';
+import { resetGame, restartGame, loadGame, saveGame } from '../data/storage';
 import { selectAutoLineup } from '../game/lineup';
 import { simulateRound } from '../game/simulator';
 import { calculateStandings } from '../game/standings';
@@ -85,7 +85,7 @@ export function App() {
   }
 
   function handleReset(): void {
-    const freshGame = resetGame();
+    const freshGame = restartGame();
     setGame(freshGame);
     setView('dashboard');
   }
@@ -99,7 +99,7 @@ export function App() {
           <div className="brand-mark">mF</div>
           <div>
             <strong>miniFM</strong>
-            <span>{game.league.season} 赛季</span>
+            <span>第 {game.league.season} 赛季</span>
           </div>
         </div>
 

@@ -51,7 +51,7 @@ export function createNewGame(): GameState {
     league: {
       id: 'league-1',
       name: 'miniFM 超级联赛',
-      season: '2026',
+      season: '1',
       teamIds: teamsWithPlayers.map((team) => team.id),
       matches: matches.map((match) => match.id),
       currentRound: 1,
