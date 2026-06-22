@@ -166,6 +166,10 @@ export function App() {
             userMatch={userMatch}
             currentRoundMatches={currentLeagueMatches}
             roundComplete={roundComplete}
+            seasonFinished={seasonFinished}
+            standings={userStandings}
+            movement={seasonMovement}
+            seasonGrowthChanges={game.seasonGrowthChanges || []}
           />
         )}
 
@@ -334,6 +338,10 @@ function MatchPage({
   userMatch,
   currentRoundMatches,
   roundComplete,
+  seasonFinished,
+  standings,
+  movement,
+  seasonGrowthChanges,
 }: {
   game: GameState;
   userTeam: Team;
@@ -341,8 +349,59 @@ function MatchPage({
   userMatch?: Match;
   currentRoundMatches: Match[];
   roundComplete: boolean;
+  seasonFinished: boolean;
+  standings: Standing[];
+  movement: { promoted: Team[]; relegated: Team[] };
+  seasonGrowthChanges: PlayerGrowthChange[];
 }) {
   const userPlayers = game.players.filter((player) => player.teamId === userTeam.id);
+
+  // 赛季结束时显示赛季总结
+  if (seasonFinished) {
+    const userRank = standings.findIndex((standing) => standing.teamId === userTeam.id) + 1;
+    const userLeagueStandings = getStandingsByLeague(game)[userLeague.id] ?? [];
+    const userLeagueChampionStanding = userLeagueStandings[0];
+    const userLeagueChampion = userLeagueChampionStanding ? findTeam(game.teams, userLeagueChampionStanding.teamId) : undefined;
+    const userTeamPlayerIds = new Set(userPlayers.map((player) => player.id));
+    const aggregatedChanges = aggregateGrowthChanges(seasonGrowthChanges).filter((change) => userTeamPlayerIds.has(change.playerId));
+    const topGrowth = aggregatedChanges.filter((change) => change.delta > 0).sort((a, b) => b.delta - a.delta).slice(0, 3);
+    const topDecline = aggregatedChanges.filter((change) => change.delta < 0).sort((a, b) => a.delta - b.delta).slice(0, 3);
+
+    return (
+      <>
+        <header className="page-header hero-band">
+          <div>
+            <span className="eyebrow">第 {game.leagueSystem.season} 赛季结束</span>
+            <h1>{userTeam.name} 排名第 {userRank || '-'}</h1>
+            <p>{formatLeagueLevel(userLeague)}冠军：{userLeagueChampion?.name ?? '待定'}。</p>
+          </div>
+        </header>
+
+        <section className="summary-grid">
+          <InfoPanel title="升级球队">
+            <strong>{movement.promoted.map((team) => team.name).join('、') || '-'}</strong>
+          </InfoPanel>
+          <InfoPanel title="降级球队">
+            <strong>{movement.relegated.map((team) => team.name).join('、') || '-'}</strong>
+          </InfoPanel>
+          <InfoPanel title="下一赛季">
+            <strong>第 {parseInt(game.leagueSystem.season, 10) + 1} 赛季</strong>
+          </InfoPanel>
+        </section>
+
+        <section className="growth-panel">
+          <div>
+            <span className="eyebrow">赛季成长总结</span>
+            <h2>球员能力变化</h2>
+          </div>
+          <div className="growth-summary-grid">
+            <SeasonGrowthList title="成长最快" changes={topGrowth} players={game.players} positive />
+            <SeasonGrowthList title="衰退最大" changes={topDecline} players={game.players} />
+          </div>
+        </section>
+      </>
+    );
+  }
 
   return (
     <>
@@ -757,11 +816,6 @@ function SeasonEndPage({
           <SeasonGrowthList title="成长最快" changes={topGrowth} players={game.players} positive />
           <SeasonGrowthList title="衰退最大" changes={topDecline} players={game.players} />
         </div>
-      </section>
-
-      <section className="action-row">
-        <button type="button" onClick={onStartNextSeason}>开启新赛季</button>
-        <button type="button" onClick={onReset}>重新开始</button>
       </section>
     </>
   );
