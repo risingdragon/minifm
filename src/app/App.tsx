@@ -73,7 +73,11 @@ export function App() {
     }
 
     if (roundComplete) {
-      handleNextRound();
+      if (view === 'standings') {
+        handleNextRound();
+      } else {
+        setView('standings');
+      }
       return;
     }
 
