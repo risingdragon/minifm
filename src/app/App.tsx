@@ -211,7 +211,7 @@ function DashboardPage({
           <h1>{userTeam.name}</h1>
           <p>
             第 {Math.min(userLeague.currentRound, userLeague.totalRounds)} / {userLeague.totalRounds} 轮，
-            当前排名第 {rank || '-'}。{roundComplete ? '本轮已完成。' : '本轮等待模拟。'}
+            当前排名第 {rank || '-'}。
           </p>
         </div>
         <img className="jersey-art" src={jerseyImage} alt="" />
@@ -220,7 +220,6 @@ function DashboardPage({
       <section className="summary-grid">
         <InfoPanel title="所在级别">
           <strong>{formatLeagueLevel(userLeague)}</strong>
-          <span>{userLeague.name}</span>
         </InfoPanel>
         <InfoPanel title="下一场">
           <strong>{opponent ? opponent.name : '赛季已完成'}</strong>
@@ -228,7 +227,6 @@ function DashboardPage({
         </InfoPanel>
         <InfoPanel title="首发人数">
           <strong>{game.players.filter((player) => player.teamId === userTeam.id && player.isStarter).length} / 11</strong>
-          <span>继续按钮会推进所有联赛同一轮</span>
         </InfoPanel>
       </section>
     </>
@@ -385,8 +383,9 @@ function SeasonEndPage({
   onReset: () => void;
 }) {
   const userRank = standings.findIndex((standing) => standing.teamId === userTeam.id) + 1;
-  const championStanding = getStandingsByLeague(game)[findLeagueByLevel(game.leagues, 1).id]?.[0];
-  const champion = championStanding ? findTeam(game.teams, championStanding.teamId) : undefined;
+  const userLeagueStandings = getStandingsByLeague(game)[userLeague.id] ?? [];
+  const userLeagueChampionStanding = userLeagueStandings[0];
+  const userLeagueChampion = userLeagueChampionStanding ? findTeam(game.teams, userLeagueChampionStanding.teamId) : undefined;
 
   return (
     <>
@@ -395,29 +394,23 @@ function SeasonEndPage({
           <span className="eyebrow">第 {game.leagueSystem.season} 赛季结束</span>
           <h1>{userTeam.name} 排名第 {userRank || '-'}</h1>
           <p>
-            {userLeague.name} 完赛。一级冠军：{champion?.name ?? '待定'}。
+            {userLeague.level === 1 ? '一级联赛' : '二级联赛'}冠军：{userLeagueChampion?.name ?? '待定'}。
           </p>
         </div>
       </header>
 
       <section className="summary-grid">
         <InfoPanel title="升级球队">
-          <strong>{movement.promoted.map((team) => team.shortName).join('、') || '-'}</strong>
+          <strong>{movement.promoted.map((team) => team.name).join('、') || '-'}</strong>
           <span>二级联赛前 3 名</span>
         </InfoPanel>
         <InfoPanel title="降级球队">
-          <strong>{movement.relegated.map((team) => team.shortName).join('、') || '-'}</strong>
+          <strong>{movement.relegated.map((team) => team.name).join('、') || '-'}</strong>
           <span>一级联赛后 3 名</span>
         </InfoPanel>
         <InfoPanel title="下一赛季">
           <strong>第 {parseInt(game.leagueSystem.season, 10) + 1} 赛季</strong>
-          <span>升降级后重新生成赛程</span>
         </InfoPanel>
-      </section>
-
-      <section className="action-row">
-        <button type="button" onClick={onStartNextSeason}>开启新赛季</button>
-        <button type="button" onClick={onReset}>重新开始</button>
       </section>
     </>
   );
