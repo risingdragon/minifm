@@ -40,6 +40,7 @@ export function selectAutoLineup(team: Team, players: Player[]): Player[] {
       position: selected.length === 0 ? 'GK' : 'DF',
       teamId: team.id,
       overall: 1,
+      potential: 1,
       isStarter: true,
       isGeneratedFillIn: true,
     });

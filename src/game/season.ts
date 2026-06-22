@@ -1,5 +1,6 @@
 import { createLeagues, createSchedules } from '../data/seed';
 import type { GameState, Team } from '../models/types';
+import { agePlayersForNewSeason } from './growth';
 import { selectLineupForAllTeams } from './lineup';
 import { calculateStandings } from './standings';
 
@@ -49,8 +50,9 @@ export function createNextSeasonGame(game: GameState): GameState {
     },
     leagues: leaguesWithSchedule,
     teams: nextTeams,
-    players: selectLineupForAllTeams(nextTeams, game.players.filter((player) => !player.isGeneratedFillIn)),
+    players: selectLineupForAllTeams(nextTeams, agePlayersForNewSeason(game.players.filter((player) => !player.isGeneratedFillIn))),
     matches,
+    lastGrowthChanges: [],
   };
 }
 

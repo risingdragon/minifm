@@ -7,8 +7,16 @@ export interface Player {
   position: Position;
   teamId: string;
   overall: number;
+  potential: number;
   isStarter: boolean;
   isGeneratedFillIn?: boolean;
+}
+
+export interface PlayerGrowthChange {
+  playerId: string;
+  previousOverall: number;
+  nextOverall: number;
+  delta: number;
 }
 
 export interface Team {
@@ -71,6 +79,7 @@ export interface GameState {
   players: Player[];
   matches: Match[];
   userTeamId: string;
+  lastGrowthChanges?: PlayerGrowthChange[];
 }
 
 export type View = 'dashboard' | 'squad' | 'match' | 'standings' | 'seasonEnd';

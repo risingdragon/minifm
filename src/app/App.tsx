@@ -5,7 +5,7 @@ import { selectAutoLineup } from '../game/lineup';
 import { getSeasonMovement } from '../game/season';
 import { simulateRound } from '../game/simulator';
 import { calculateStandings } from '../game/standings';
-import type { GameState, League, Match, Player, Standing, Team, View } from '../models/types';
+import type { GameState, League, Match, Player, PlayerGrowthChange, Standing, Team, View } from '../models/types';
 
 export function App() {
   const [game, setGame] = useState<GameState>(() => loadGame());
@@ -13,7 +13,6 @@ export function App() {
   const userTeam = game.teams.find((team) => team.id === game.userTeamId) ?? game.teams.find((team) => team.isUserControlled) ?? game.teams[0];
   const userLeague = findLeague(game.leagues, userTeam.leagueId);
   const [selectedLeagueId, setSelectedLeagueId] = useState(userLeague.id);
-  const currentRound = Math.min(userLeague.currentRound, userLeague.totalRounds);
   const currentLeagueMatches = getLeagueRoundMatches(game, userLeague.id, userLeague.currentRound);
   const currentRoundMatches = getAllCurrentRoundMatches(game);
   const userMatch = currentLeagueMatches.find((match) => match.homeTeamId === userTeam.id || match.awayTeamId === userTeam.id);
@@ -37,14 +36,10 @@ export function App() {
     }
   }, [seasonFinished]);
 
-  function updateGame(nextGame: GameState): void {
-    setGame(nextGame);
-  }
-
   function handleAutoLineup(): void {
     const nextPlayers = game.players.filter((player) => player.teamId !== userTeam.id || !player.isGeneratedFillIn);
     const userPlayers = selectAutoLineup(userTeam, nextPlayers);
-    updateGame({
+    setGame({
       ...game,
       players: [...nextPlayers.filter((player) => player.teamId !== userTeam.id), ...userPlayers],
     });
@@ -52,10 +47,11 @@ export function App() {
 
   function handleSimulateRound(): void {
     const result = simulateRound(userLeague.currentRound, game.matches, game.teams, game.players);
-    updateGame({
+    setGame({
       ...game,
       matches: result.matches,
       players: result.players,
+      lastGrowthChanges: result.growthChanges,
     });
     setView('match');
   }
@@ -70,7 +66,7 @@ export function App() {
       currentRound: league.currentRound + 1,
     }));
 
-    updateGame({ ...game, leagues });
+    setGame({ ...game, leagues });
     setView(leagues.every((league) => league.currentRound > league.totalRounds) ? 'seasonEnd' : 'dashboard');
   }
 
@@ -135,7 +131,6 @@ export function App() {
             userLeague={userLeague}
             userMatch={userMatch}
             standings={userStandings}
-            roundComplete={roundComplete}
           />
         )}
 
@@ -190,14 +185,12 @@ function DashboardPage({
   userLeague,
   userMatch,
   standings,
-  roundComplete,
 }: {
   game: GameState;
   userTeam: Team;
   userLeague: League;
   userMatch?: Match;
   standings: Standing[];
-  roundComplete: boolean;
 }) {
   const rank = standings.findIndex((standing) => standing.teamId === userTeam.id) + 1;
   const opponentId = userMatch?.homeTeamId === userTeam.id ? userMatch.awayTeamId : userMatch?.homeTeamId;
@@ -257,6 +250,7 @@ function SquadPage({ team, league, players, onAutoLineup }: { team: Team; league
               <th>年龄</th>
               <th>位置</th>
               <th>能力</th>
+              <th>潜力</th>
             </tr>
           </thead>
           <tbody>
@@ -267,6 +261,7 @@ function SquadPage({ team, league, players, onAutoLineup }: { team: Team; league
                 <td>{player.age}</td>
                 <td>{player.position}</td>
                 <td><strong>{player.overall}</strong></td>
+                <td>{player.potential}</td>
               </tr>
             ))}
           </tbody>
@@ -291,6 +286,8 @@ function MatchPage({
   currentRoundMatches: Match[];
   roundComplete: boolean;
 }) {
+  const userPlayers = game.players.filter((player) => player.teamId === userTeam.id);
+
   return (
     <>
       <header className="page-header">
@@ -318,6 +315,8 @@ function MatchPage({
           </div>
         ))}
       </div>
+
+      {roundComplete && <GrowthSummary changes={game.lastGrowthChanges ?? []} players={userPlayers} />}
     </>
   );
 }
@@ -394,7 +393,7 @@ function SeasonEndPage({
           <span className="eyebrow">第 {game.leagueSystem.season} 赛季结束</span>
           <h1>{userTeam.name} 排名第 {userRank || '-'}</h1>
           <p>
-            {userLeague.level === 1 ? '一级联赛' : '二级联赛'}冠军：{userLeagueChampion?.name ?? '待定'}。
+            {formatLeagueLevel(userLeague)}冠军：{userLeagueChampion?.name ?? '待定'}。
           </p>
         </div>
       </header>
@@ -412,8 +411,69 @@ function SeasonEndPage({
           <strong>第 {parseInt(game.leagueSystem.season, 10) + 1} 赛季</strong>
         </InfoPanel>
       </section>
+
+      <section className="action-row">
+        <button type="button" onClick={onStartNextSeason}>开启新赛季</button>
+        <button type="button" onClick={onReset}>重新开始</button>
+      </section>
     </>
   );
+}
+
+function GrowthSummary({ changes, players }: { changes: PlayerGrowthChange[]; players: Player[] }) {
+  const playerIds = new Set(players.map((player) => player.id));
+  const playerChanges = aggregateGrowthChanges(changes)
+    .filter((change) => playerIds.has(change.playerId))
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+    .slice(0, 6);
+
+  return (
+    <section className="growth-panel">
+      <div>
+        <span className="eyebrow">能力变化</span>
+        <h2>本轮球员成长与衰退</h2>
+      </div>
+      {playerChanges.length === 0 ? (
+        <p className="muted">本轮无明显能力变化。</p>
+      ) : (
+        <div className="growth-list">
+          {playerChanges.map((change) => {
+            const player = players.find((item) => item.id === change.playerId);
+            return (
+              <div className="growth-item" key={`${change.playerId}-${change.previousOverall}-${change.nextOverall}`}>
+                <span>{player?.name ?? change.playerId}</span>
+                <strong className={change.delta > 0 ? 'growth-up' : 'growth-down'}>
+                  {change.delta > 0 ? '+' : ''}{change.delta}
+                </strong>
+                <small>{change.previousOverall} → {change.nextOverall}</small>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function aggregateGrowthChanges(changes: PlayerGrowthChange[]): PlayerGrowthChange[] {
+  const merged = new Map<string, PlayerGrowthChange>();
+
+  changes.forEach((change) => {
+    const existing = merged.get(change.playerId);
+    if (!existing) {
+      merged.set(change.playerId, { ...change });
+      return;
+    }
+
+    merged.set(change.playerId, {
+      playerId: change.playerId,
+      previousOverall: existing.previousOverall,
+      nextOverall: change.nextOverall,
+      delta: change.nextOverall - existing.previousOverall,
+    });
+  });
+
+  return Array.from(merged.values()).filter((change) => change.delta !== 0);
 }
 
 function StandingsTable({ league, teams, standings }: { league: League; teams: Team[]; standings: Standing[] }) {
@@ -522,14 +582,6 @@ function findLeague(leagues: League[], id: string): League {
   const league = leagues.find((item) => item.id === id);
   if (!league) {
     throw new Error(`Missing league ${id}`);
-  }
-  return league;
-}
-
-function findLeagueByLevel(leagues: League[], level: number): League {
-  const league = leagues.find((item) => item.level === level);
-  if (!league) {
-    throw new Error(`Missing league level ${level}`);
   }
   return league;
 }

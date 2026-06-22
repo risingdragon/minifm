@@ -137,14 +137,19 @@ function createTeamPlayers(teamId: string, teamIndex: number, leagueId: string):
     const abilityBase = 56 + leagueBias + teamBias + (position === 'GK' ? 1 : 0);
     const swing = ((teamIndex * 11 + index * 7) % 18) - 6;
     const overall = Math.max(38, Math.min(96, Math.round(abilityBase + swing)));
+    const age = 18 + ((teamIndex * 5 + index * 2) % 17);
+    const potentialBase = overall + (age <= 20 ? 24 : age <= 24 ? 16 : age <= 29 ? 8 : 2);
+    const potentialSwing = (teamIndex * 5 + index * 3) % 10;
+    const potential = Math.max(overall, Math.min(200, potentialBase + potentialSwing));
 
     return {
       id: `${teamId}-player-${index + 1}`,
       name: `${surnames[(teamIndex + index) % surnames.length]}${givenNames[(teamIndex * 3 + index) % givenNames.length]}`,
-      age: 18 + ((teamIndex * 5 + index * 2) % 17),
+      age,
       position,
       teamId,
       overall,
+      potential,
       isStarter: false,
     };
   });

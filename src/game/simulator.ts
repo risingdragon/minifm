@@ -1,11 +1,14 @@
-import type { Match, Player, Team } from '../models/types';
+import type { Match, Player, PlayerGrowthChange, Team } from '../models/types';
+import { settleGrowthAfterMatch } from './growth';
 import { getStarters, selectAutoLineup } from './lineup';
 
 export function simulateRound(round: number, matches: Match[], teams: Team[], players: Player[]): {
   matches: Match[];
   players: Player[];
+  growthChanges: PlayerGrowthChange[];
 } {
   let updatedPlayers = teams.flatMap((team) => selectAutoLineup(team, players));
+  const growthChanges: PlayerGrowthChange[] = [];
   const updatedMatches = matches.map((match) => {
     if (match.round !== round || match.status === 'played') {
       return match;
@@ -22,6 +25,10 @@ export function simulateRound(round: number, matches: Match[], teams: Team[], pl
     const awayPower = calculateTeamPower(awayTeam.id, updatedPlayers);
     const homeScore = generateScore(homePower, awayPower);
     const awayScore = generateScore(awayPower, homePower);
+    const growthResult = settleGrowthAfterMatch(updatedPlayers);
+
+    updatedPlayers = growthResult.players;
+    growthChanges.push(...growthResult.changes);
 
     return {
       ...match,
@@ -31,7 +38,7 @@ export function simulateRound(round: number, matches: Match[], teams: Team[], pl
     };
   });
 
-  return { matches: updatedMatches, players: updatedPlayers };
+  return { matches: updatedMatches, players: updatedPlayers, growthChanges };
 }
 
 export function calculateTeamPower(teamId: string, players: Player[]): number {

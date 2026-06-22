@@ -2,7 +2,7 @@ import type { GameState } from '../models/types';
 import { createNewGame } from './seed';
 import { createNextSeasonGame } from '../game/season';
 
-const STORAGE_KEY = 'minifm-save-v2';
+const STORAGE_KEY = 'minifm-save-v3';
 const SEASON_KEY = 'minifm-season';
 
 export function loadGame(): GameState {
@@ -42,5 +42,12 @@ export function resetGame(): GameState {
 }
 
 function isCompatibleSave(state: GameState): boolean {
-  return Array.isArray(state.leagues) && state.leagues.length === 2 && Boolean(state.leagueSystem) && Boolean(state.userTeamId);
+  return (
+    Array.isArray(state.leagues) &&
+    state.leagues.length === 2 &&
+    Boolean(state.leagueSystem) &&
+    Boolean(state.userTeamId) &&
+    Array.isArray(state.players) &&
+    state.players.every((player) => typeof player.potential === 'number' && player.overall <= player.potential)
+  );
 }
