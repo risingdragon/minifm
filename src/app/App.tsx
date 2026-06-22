@@ -270,9 +270,16 @@ function DashboardPage({
 }
 
 function SquadPage({ team, league, players, onAutoLineup }: { team: Team; league: League; players: Player[]; onAutoLineup: () => void }) {
-  const orderedPlayers = [...players].sort(
-    (a, b) => Number(b.isStarter) - Number(a.isStarter) || positionWeight(a.position) - positionWeight(b.position) || b.overall - a.overall,
-  );
+  const [sort, setSort] = useState<SquadSortState>({ key: 'status', direction: 'asc' });
+
+  function handleSort(key: SquadSortKey): void {
+    setSort((current) => ({
+      key,
+      direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
+    }));
+  }
+
+  const orderedPlayers = [...players].sort((a, b) => compareSquadPlayers(a, b, sort));
 
   return (
     <>
@@ -288,15 +295,15 @@ function SquadPage({ team, league, players, onAutoLineup }: { team: Team; league
         <table>
           <thead>
             <tr>
-              <th>状态</th>
-              <th>姓名</th>
-              <th>年龄</th>
-              <th>位置</th>
-              <th>能力</th>
-              <th>潜力</th>
-              <th>身价</th>
-              <th>周薪</th>
-              <th>合同</th>
+              <SortableHeader label="状态" sortKey="status" sort={sort} onSort={handleSort} />
+              <SortableHeader label="姓名" sortKey="name" sort={sort} onSort={handleSort} />
+              <SortableHeader label="年龄" sortKey="age" sort={sort} onSort={handleSort} />
+              <SortableHeader label="位置" sortKey="position" sort={sort} onSort={handleSort} />
+              <SortableHeader label="能力" sortKey="overall" sort={sort} onSort={handleSort} />
+              <SortableHeader label="潜力" sortKey="potential" sort={sort} onSort={handleSort} />
+              <SortableHeader label="身价" sortKey="marketValue" sort={sort} onSort={handleSort} />
+              <SortableHeader label="周薪" sortKey="weeklyWage" sort={sort} onSort={handleSort} />
+              <SortableHeader label="合同" sortKey="contractYears" sort={sort} onSort={handleSort} />
             </tr>
           </thead>
           <tbody>
@@ -514,17 +521,20 @@ type TransferSortState = {
   direction: 'asc' | 'desc';
 };
 
-function SortableHeader({
-  label,
-  sortKey,
-  sort,
-  onSort,
-}: {
+type SquadSortKey = 'status' | 'name' | 'age' | 'position' | 'overall' | 'potential' | 'marketValue' | 'weeklyWage' | 'contractYears';
+type SquadSortState = {
+  key: SquadSortKey;
+  direction: 'asc' | 'desc';
+};
+
+interface SortableHeaderProps<T extends string> {
   label: string;
-  sortKey: TransferSortKey;
-  sort: TransferSortState;
-  onSort: (key: TransferSortKey) => void;
-}) {
+  sortKey: T;
+  sort: { key: string; direction: 'asc' | 'desc' };
+  onSort: (key: T) => void;
+}
+
+function SortableHeader<T extends string>({ label, sortKey, sort, onSort }: SortableHeaderProps<T>) {
   const active = sort.key === sortKey;
   return (
     <th>
@@ -554,6 +564,55 @@ function getTransferSortValue(player: Player, teams: Team[], key: TransferSortKe
       return player.name;
     case 'team':
       return teams.find((team) => team.id === player.teamId)?.name ?? '';
+    case 'age':
+      return player.age;
+    case 'position':
+      return player.position;
+    case 'overall':
+      return player.overall;
+    case 'potential':
+      return player.potential;
+    case 'marketValue':
+      return player.marketValue;
+    case 'weeklyWage':
+      return player.weeklyWage;
+    case 'contractYears':
+      return player.contractYears;
+  }
+}
+
+function compareSquadPlayers(a: Player, b: Player, sort: SquadSortState): number {
+  const direction = sort.direction === 'asc' ? 1 : -1;
+
+  // 先按主排序字段比较
+  const aValue = getSquadSortValue(a, sort.key);
+  const bValue = getSquadSortValue(b, sort.key);
+  const result =
+    typeof aValue === 'number' && typeof bValue === 'number'
+      ? aValue - bValue
+      : String(aValue).localeCompare(String(bValue), 'zh-CN');
+
+  if (result !== 0) {
+    return result * direction;
+  }
+
+  // 状态相同时，按位置排序（GK → DF → MF → FW）
+  const positionOrder = { GK: 0, DF: 1, MF: 2, FW: 3 };
+  const positionCompare = (positionOrder[a.position] - positionOrder[b.position]) || a.name.localeCompare(b.name, 'zh-CN');
+  if (positionCompare !== 0) {
+    return positionCompare;
+  }
+
+  // 同状态同位置时，按名字排序
+  return a.name.localeCompare(b.name, 'zh-CN');
+}
+
+function getSquadSortValue(player: Player, key: SquadSortKey): string | number {
+  switch (key) {
+    case 'status':
+      return player.isStarter ? 0 : 1;
+    case 'name':
+      return player.name;
     case 'age':
       return player.age;
     case 'position':
