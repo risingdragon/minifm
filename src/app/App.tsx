@@ -68,6 +68,7 @@ export function App() {
 
   function handleContinue(): void {
     if (seasonFinished) {
+      handleReset();
       return;
     }
 
@@ -105,7 +106,7 @@ export function App() {
           <NavButton label="积分榜" active={view === 'standings'} onClick={() => setView('standings')} />
         </nav>
 
-        <button className="continue-button" type="button" disabled={seasonFinished} onClick={handleContinue}>
+        <button className="continue-button" type="button" onClick={handleContinue}>
           继续
         </button>
 
@@ -352,14 +353,10 @@ function SeasonEndPage({ teams, standings, onReset }: { teams: Team[]; standings
       <header className="page-header hero-band">
         <div>
           <span className="eyebrow">赛季结束</span>
-          <h1>{champion?.name ?? '冠军待定'}</h1>
-          <p>{userTeam?.name} 最终排名第 {userRank || '-'}。</p>
+          <h1>{userTeam?.name} 最终排名第 {userRank || '-'}</h1>
         </div>
       </header>
       <StandingsTable teams={teams} standings={standings} />
-      <section className="action-row">
-        <button type="button" onClick={onReset}>开启新赛季</button>
-      </section>
     </>
   );
 }
