@@ -121,6 +121,16 @@ th {
   text-align: left;
 }
 
+.continue-button {
+  width: 100%;
+  background: #58b77b;
+  color: #0c1711;
+}
+
+.continue-button:hover:not(:disabled) {
+  background: #70ca91;
+}
+
 .nav-button:hover:not(:disabled),
 .secondary-button:hover:not(:disabled),
 .nav-button.active {
@@ -313,7 +323,8 @@ th {
   }
 
   .nav-button,
-  .secondary-button {
+  .secondary-button,
+  .continue-button {
     justify-content: center;
     padding: 0 10px;
     text-align: center;

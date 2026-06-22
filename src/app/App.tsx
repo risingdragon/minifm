@@ -66,6 +66,19 @@ export function App() {
     setView(game.league.currentRound + 1 > game.league.totalRounds ? 'seasonEnd' : 'dashboard');
   }
 
+  function handleContinue(): void {
+    if (seasonFinished) {
+      return;
+    }
+
+    if (roundComplete) {
+      handleNextRound();
+      return;
+    }
+
+    handleSimulateRound();
+  }
+
   function handleReset(): void {
     const freshGame = resetGame();
     setGame(freshGame);
@@ -91,6 +104,10 @@ export function App() {
           <NavButton label="比赛" active={view === 'match'} onClick={() => setView('match')} />
           <NavButton label="积分榜" active={view === 'standings'} onClick={() => setView('standings')} />
         </nav>
+
+        <button className="continue-button" type="button" disabled={seasonFinished} onClick={handleContinue}>
+          继续
+        </button>
 
         <button className="secondary-button" type="button" onClick={handleReset}>
           重新开始
@@ -197,23 +214,9 @@ function DashboardPage({
           <strong>{opponent ? opponent.name : '赛季已完成'}</strong>
           <span>{userMatch ? formatVenue(userMatch, userTeam.id) : '没有待赛比赛'}</span>
         </InfoPanel>
-        <InfoPanel title="本轮状态">
-          <strong>{roundComplete ? '已完成' : '待模拟'}</strong>
-          <span>{roundComplete ? '可以进入下一轮' : '本轮 10 场比赛等待开球'}</span>
-        </InfoPanel>
         <InfoPanel title="首发人数">
           <strong>{game.players.filter((player) => player.teamId === userTeam.id && player.isStarter).length} / 11</strong>
-          <span>自动首发使用 4-4-2</span>
         </InfoPanel>
-      </section>
-
-      <section className="action-row" aria-label="主要操作">
-        <button type="button" onClick={onGoSquad}>查看阵容</button>
-        <button type="button" onClick={roundComplete ? onGoMatch : onSimulate}>
-          {roundComplete ? '查看比分' : '模拟本轮'}
-        </button>
-        <button type="button" onClick={onGoStandings}>查看积分榜</button>
-        <button type="button" disabled={!roundComplete} onClick={onNextRound}>进入下一轮</button>
       </section>
     </>
   );
