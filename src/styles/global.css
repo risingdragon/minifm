@@ -280,14 +280,24 @@ th {
   gap: 8px;
 }
 
-.tab-button {
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.tab-button,
+.filter-button {
   min-height: 38px;
   background: #dbe6e0;
   color: #203028;
 }
 
 .tab-button.active,
-.tab-button:hover:not(:disabled) {
+.tab-button:hover:not(:disabled),
+.filter-button.active,
+.filter-button:hover:not(:disabled) {
   background: #193d2f;
   color: #fff;
 }

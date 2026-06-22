@@ -6,7 +6,7 @@ import { getSeasonMovement } from '../game/season';
 import { simulateRound } from '../game/simulator';
 import { calculateStandings } from '../game/standings';
 import { buyPlayer, countRegularPlayers, createTransferMarket } from '../game/transfer';
-import type { GameState, League, Match, Player, PlayerGrowthChange, Standing, Team, View } from '../models/types';
+import type { GameState, League, Match, Player, PlayerGrowthChange, Position, Standing, Team, View } from '../models/types';
 
 export function App() {
   const [game, setGame] = useState<GameState>(() => loadGame());
@@ -450,9 +450,11 @@ function TransferMarketPage({ game, userTeam, onBuyPlayer }: { game: GameState; 
 
 function TransferMarketPageSorted({ game, userTeam, onBuyPlayer }: { game: GameState; userTeam: Team; onBuyPlayer: (playerId: string) => void }) {
   const [sort, setSort] = useState<TransferSortState>({ key: 'marketValue', direction: 'desc' });
+  const [positionFilter, setPositionFilter] = useState<TransferPositionFilter>('ALL');
   const marketPlayers = game.transferMarket.listedPlayerIds
     .map((playerId) => game.players.find((player) => player.id === playerId))
     .filter((player): player is Player => Boolean(player))
+    .filter((player) => positionFilter === 'ALL' || player.position === positionFilter)
     .sort((a, b) => compareTransferPlayers(a, b, game.teams, sort));
 
   function handleSort(key: TransferSortKey): void {
@@ -471,6 +473,18 @@ function TransferMarketPageSorted({ game, userTeam, onBuyPlayer }: { game: GameS
           <p>当前余额：{formatMoney(userTeam.balance)}</p>
         </div>
       </header>
+      <section className="filter-row" aria-label="位置筛选">
+        {TRANSFER_POSITION_FILTERS.map((option) => (
+          <button
+            className={positionFilter === option.value ? 'filter-button active' : 'filter-button'}
+            type="button"
+            key={option.value}
+            onClick={() => setPositionFilter(option.value)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </section>
       <div className="table-wrap">
         <table>
           <thead>
@@ -516,10 +530,19 @@ function TransferMarketPageSorted({ game, userTeam, onBuyPlayer }: { game: GameS
 }
 
 type TransferSortKey = 'name' | 'team' | 'age' | 'position' | 'overall' | 'potential' | 'marketValue' | 'weeklyWage' | 'contractYears';
+type TransferPositionFilter = 'ALL' | Position;
 type TransferSortState = {
   key: TransferSortKey;
   direction: 'asc' | 'desc';
 };
+
+const TRANSFER_POSITION_FILTERS: Array<{ label: string; value: TransferPositionFilter }> = [
+  { label: '全部', value: 'ALL' },
+  { label: 'GK', value: 'GK' },
+  { label: 'DF', value: 'DF' },
+  { label: 'MF', value: 'MF' },
+  { label: 'FW', value: 'FW' },
+];
 
 type SquadSortKey = 'status' | 'name' | 'age' | 'position' | 'overall' | 'potential' | 'marketValue' | 'weeklyWage' | 'contractYears';
 type SquadSortState = {
