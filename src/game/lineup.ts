@@ -65,6 +65,47 @@ export function getStarters(teamId: string, players: Player[]): Player[] {
     .slice(0, 11);
 }
 
+export interface LineupWarning {
+  substitute: Player;
+  starter: Player;
+  position: Position;
+}
+
+export function detectLineupWarnings(team: Team, players: Player[]): LineupWarning[] {
+  const teamPlayers = players
+    .filter((player) => player.teamId === team.id && !player.isGeneratedFillIn);
+
+  const starters = teamPlayers.filter((player) => player.isStarter);
+  const substitutes = teamPlayers.filter((player) => !player.isStarter);
+
+  const warnings: LineupWarning[] = [];
+
+  (Object.keys(FORMATION) as Position[]).forEach((position) => {
+    const positionStarters = starters
+      .filter((player) => player.position === position)
+      .sort((a, b) => a.overall - b.overall);
+
+    const positionSubstitutes = substitutes
+      .filter((player) => player.position === position)
+      .sort((a, b) => b.overall - a.overall);
+
+    for (const substitute of positionSubstitutes) {
+      for (const starter of positionStarters) {
+        if (substitute.overall > starter.overall) {
+          warnings.push({
+            substitute,
+            starter,
+            position,
+          });
+          break;
+        }
+      }
+    }
+  });
+
+  return warnings;
+}
+
 function positionOrder(position: Position): number {
   return ['GK', 'DF', 'MF', 'FW'].indexOf(position);
 }

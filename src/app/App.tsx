@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import jerseyImage from '../../assets/lineup-jersey.png';
 import { resetGame, startNewSeason, loadGame, saveGame } from '../data/storage';
-import { selectAutoLineup } from '../game/lineup';
+import { selectAutoLineup, detectLineupWarnings } from '../game/lineup';
 import { getSeasonMovement } from '../game/season';
 import { simulateRound } from '../game/simulator';
 import { calculateStandings } from '../game/standings';
@@ -195,6 +195,14 @@ function DashboardPage({
   const rank = standings.findIndex((standing) => standing.teamId === userTeam.id) + 1;
   const opponentId = userMatch?.homeTeamId === userTeam.id ? userMatch.awayTeamId : userMatch?.homeTeamId;
   const opponent = game.teams.find((team) => team.id === opponentId);
+  const lineupWarnings = detectLineupWarnings(userTeam, game.players);
+
+  const positionNames: Record<string, string> = {
+    GK: '门将',
+    DF: '后卫',
+    MF: '中场',
+    FW: '前锋',
+  };
 
   return (
     <>
@@ -210,13 +218,35 @@ function DashboardPage({
         <img className="jersey-art" src={jerseyImage} alt="" />
       </header>
 
+      {lineupWarnings.length > 0 && (
+        <section className="warning-band">
+          <div className="warning-header">
+            <span className="warning-icon">⚠</span>
+            <span>阵容提示</span>
+          </div>
+          <div className="warning-list">
+            {lineupWarnings.slice(0, 3).map((warning, index) => (
+              <div key={index} className="warning-item">
+                <span className="warning-position">{positionNames[warning.position]}</span>
+                <span className="warning-substitute">{warning.substitute.name} ({warning.substitute.overall})</span>
+                <span className="warning-arrow">→</span>
+                <span className="warning-starter">{warning.starter.name} ({warning.starter.overall})</span>
+              </div>
+            ))}
+            {lineupWarnings.length > 3 && (
+              <div className="warning-more">还有 {lineupWarnings.length - 3} 个位置需要调整</div>
+            )}
+          </div>
+        </section>
+      )}
+
       <section className="summary-grid">
         <InfoPanel title="所在级别">
           <strong>{formatLeagueLevel(userLeague)}</strong>
         </InfoPanel>
         <InfoPanel title="下一场">
-          <strong>{opponent ? opponent.name : '赛季已完成'}</strong>
-          <span>{userMatch ? formatVenue(userMatch, userTeam.id) : '没有待赛比赛'}</span>
+          <strong>{opponent ? opponent.name : '赛季结束'}</strong>
+          <span>{userMatch ? formatVenue(userMatch, userTeam.id) : '对手尚未确定'}</span>
         </InfoPanel>
         <InfoPanel title="首发人数">
           <strong>{game.players.filter((player) => player.teamId === userTeam.id && player.isStarter).length} / 11</strong>
@@ -238,7 +268,7 @@ function SquadPage({ team, league, players, onAutoLineup }: { team: Team; league
           <span className="eyebrow">{league.name}</span>
           <h1>{team.name}</h1>
         </div>
-        <button type="button" onClick={onAutoLineup}>自动选择首发</button>
+        <button type="button" onClick={onAutoLineup}>最强阵容</button>
       </header>
 
       <div className="table-wrap">
@@ -295,7 +325,6 @@ function MatchPage({
           <span className="eyebrow">{userLeague.name} · 第 {Math.min(userLeague.currentRound, userLeague.totalRounds)} 轮</span>
           <h1>比赛中心</h1>
         </div>
-        <span className={roundComplete ? 'tag' : 'tag warning'}>{roundComplete ? '本轮完成' : '等待模拟'}</span>
       </header>
 
       {userMatch && (
