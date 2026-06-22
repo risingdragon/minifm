@@ -52,6 +52,7 @@ export function App() {
       matches: result.matches,
       players: result.players,
       lastGrowthChanges: result.growthChanges,
+      seasonGrowthChanges: [...(game.seasonGrowthChanges || []), ...result.growthChanges],
     });
     setView('match');
   }
@@ -170,6 +171,7 @@ export function App() {
             userLeague={userLeague}
             standings={userStandings}
             movement={seasonMovement}
+            seasonGrowthChanges={game.seasonGrowthChanges || []}
             onStartNextSeason={handleStartNextSeason}
             onReset={handleReset}
           />
@@ -399,6 +401,7 @@ function SeasonEndPage({
   userLeague,
   standings,
   movement,
+  seasonGrowthChanges,
   onStartNextSeason,
   onReset,
 }: {
@@ -407,6 +410,7 @@ function SeasonEndPage({
   userLeague: League;
   standings: Standing[];
   movement: { promoted: Team[]; relegated: Team[] };
+  seasonGrowthChanges: PlayerGrowthChange[];
   onStartNextSeason: () => void;
   onReset: () => void;
 }) {
@@ -414,6 +418,15 @@ function SeasonEndPage({
   const userLeagueStandings = getStandingsByLeague(game)[userLeague.id] ?? [];
   const userLeagueChampionStanding = userLeagueStandings[0];
   const userLeagueChampion = userLeagueChampionStanding ? findTeam(game.teams, userLeagueChampionStanding.teamId) : undefined;
+
+  const userTeamPlayerIds = new Set(game.players.filter((p) => p.teamId === userTeam.id).map((p) => p.id));
+  const aggregatedChanges = aggregateGrowthChanges(seasonGrowthChanges).filter((c) => userTeamPlayerIds.has(c.playerId));
+  const topGrowth = aggregatedChanges.filter((c) => c.delta > 0).sort((a, b) => b.delta - a.delta).slice(0, 3);
+  const topDecline = aggregatedChanges.filter((c) => c.delta < 0).sort((a, b) => a.delta - b.delta).slice(0, 3);
+
+  const getPlayerName = (playerId: string): string => {
+    return game.players.find((p) => p.id === playerId)?.name || playerId;
+  };
 
   return (
     <>
@@ -439,6 +452,47 @@ function SeasonEndPage({
         <InfoPanel title="下一赛季">
           <strong>第 {parseInt(game.leagueSystem.season, 10) + 1} 赛季</strong>
         </InfoPanel>
+      </section>
+
+      <section className="growth-panel">
+        <div>
+          <span className="eyebrow">赛季成长总结</span>
+          <h2>球员能力变化</h2>
+        </div>
+        <div className="growth-summary-grid">
+          <div className="growth-summary-section">
+            <h3>成长最快</h3>
+            {topGrowth.length === 0 ? (
+              <p className="muted">本赛季无成长球员。</p>
+            ) : (
+              <div className="growth-list">
+                {topGrowth.map((change) => (
+                  <div className="growth-item" key={change.playerId}>
+                    <span>{getPlayerName(change.playerId)}</span>
+                    <strong className="growth-up">+{change.delta}</strong>
+                    <small>{change.previousOverall} → {change.nextOverall}</small>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="growth-summary-section">
+            <h3>衰退最多</h3>
+            {topDecline.length === 0 ? (
+              <p className="muted">本赛季无衰退球员。</p>
+            ) : (
+              <div className="growth-list">
+                {topDecline.map((change) => (
+                  <div className="growth-item" key={change.playerId}>
+                    <span>{getPlayerName(change.playerId)}</span>
+                    <strong className="growth-down">{change.delta}</strong>
+                    <small>{change.previousOverall} → {change.nextOverall}</small>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </section>
     </>
   );

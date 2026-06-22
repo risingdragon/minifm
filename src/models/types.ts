@@ -80,6 +80,7 @@ export interface GameState {
   matches: Match[];
   userTeamId: string;
   lastGrowthChanges?: PlayerGrowthChange[];
+  seasonGrowthChanges?: PlayerGrowthChange[];
 }
 
 export type View = 'dashboard' | 'squad' | 'match' | 'standings' | 'seasonEnd';

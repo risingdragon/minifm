@@ -42,18 +42,19 @@ export function createNextSeasonGame(game: GameState): GameState {
   const { leaguesWithSchedule, matches } = createSchedules(nextLeagues, nextTeams);
 
   return {
-    ...game,
-    leagueSystem: {
-      ...game.leagueSystem,
-      season: nextSeason,
-      leagueIds: leaguesWithSchedule.map((league) => league.id),
-    },
-    leagues: leaguesWithSchedule,
-    teams: nextTeams,
-    players: selectLineupForAllTeams(nextTeams, agePlayersForNewSeason(game.players.filter((player) => !player.isGeneratedFillIn))),
-    matches,
-    lastGrowthChanges: [],
-  };
+      ...game,
+      leagueSystem: {
+        ...game.leagueSystem,
+        season: nextSeason,
+        leagueIds: leaguesWithSchedule.map((league) => league.id),
+      },
+      leagues: leaguesWithSchedule,
+      teams: nextTeams,
+      players: selectLineupForAllTeams(nextTeams, agePlayersForNewSeason(game.players.filter((player) => !player.isGeneratedFillIn))),
+      matches,
+      lastGrowthChanges: [],
+      seasonGrowthChanges: [],
+    };
 }
 
 function getLeagueByLevel(game: GameState, level: number) {
