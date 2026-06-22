@@ -244,6 +244,34 @@ th {
   font-weight: 800;
 }
 
+.tag.warning {
+  background: #fff1d6;
+  color: #9a5a00;
+}
+
+.tag.danger {
+  background: #ffe3df;
+  color: #a33125;
+}
+
+.league-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tab-button {
+  min-height: 38px;
+  background: #dbe6e0;
+  color: #203028;
+}
+
+.tab-button.active,
+.tab-button:hover:not(:disabled) {
+  background: #193d2f;
+  color: #fff;
+}
+
 .scoreboard {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);

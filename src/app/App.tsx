@@ -2,25 +2,34 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import jerseyImage from '../../assets/lineup-jersey.png';
 import { resetGame, startNewSeason, loadGame, saveGame } from '../data/storage';
 import { selectAutoLineup } from '../game/lineup';
+import { getSeasonMovement } from '../game/season';
 import { simulateRound } from '../game/simulator';
 import { calculateStandings } from '../game/standings';
-import type { GameState, Match, Player, Standing, Team, View } from '../models/types';
+import type { GameState, League, Match, Player, Standing, Team, View } from '../models/types';
 
 export function App() {
   const [game, setGame] = useState<GameState>(() => loadGame());
   const [view, setView] = useState<View>('dashboard');
-
-  const userTeam = game.teams.find((team) => team.isUserControlled) ?? game.teams[0];
-  const currentRoundMatches = game.matches.filter((match) => match.round === game.league.currentRound);
-  const userMatch = currentRoundMatches.find(
-    (match) => match.homeTeamId === userTeam.id || match.awayTeamId === userTeam.id,
-  );
-  const standings = useMemo(() => calculateStandings(game.teams, game.matches), [game.matches, game.teams]);
-  const seasonFinished = game.league.currentRound > game.league.totalRounds;
+  const userTeam = game.teams.find((team) => team.id === game.userTeamId) ?? game.teams.find((team) => team.isUserControlled) ?? game.teams[0];
+  const userLeague = findLeague(game.leagues, userTeam.leagueId);
+  const [selectedLeagueId, setSelectedLeagueId] = useState(userLeague.id);
+  const currentRound = Math.min(userLeague.currentRound, userLeague.totalRounds);
+  const currentLeagueMatches = getLeagueRoundMatches(game, userLeague.id, userLeague.currentRound);
+  const currentRoundMatches = getAllCurrentRoundMatches(game);
+  const userMatch = currentLeagueMatches.find((match) => match.homeTeamId === userTeam.id || match.awayTeamId === userTeam.id);
+  const standingsByLeague = useMemo(() => getStandingsByLeague(game), [game]);
+  const userStandings = standingsByLeague[userLeague.id] ?? [];
+  const seasonFinished = game.leagues.every((league) => league.currentRound > league.totalRounds);
+  const roundComplete = isRoundComplete(currentRoundMatches);
+  const seasonMovement = useMemo(() => (seasonFinished ? getSeasonMovement(game) : { promoted: [], relegated: [] }), [game, seasonFinished]);
 
   useEffect(() => {
     saveGame(game);
   }, [game]);
+
+  useEffect(() => {
+    setSelectedLeagueId(userLeague.id);
+  }, [userLeague.id]);
 
   useEffect(() => {
     if (seasonFinished) {
@@ -42,7 +51,7 @@ export function App() {
   }
 
   function handleSimulateRound(): void {
-    const result = simulateRound(game.league.currentRound, game.matches, game.teams, game.players);
+    const result = simulateRound(userLeague.currentRound, game.matches, game.teams, game.players);
     updateGame({
       ...game,
       matches: result.matches,
@@ -52,34 +61,33 @@ export function App() {
   }
 
   function handleNextRound(): void {
-    if (!isRoundComplete(currentRoundMatches)) {
+    if (!roundComplete) {
       return;
     }
 
-    updateGame({
-      ...game,
-      league: {
-        ...game.league,
-        currentRound: game.league.currentRound + 1,
-      },
-    });
-    setView(game.league.currentRound + 1 > game.league.totalRounds ? 'seasonEnd' : 'dashboard');
+    const leagues = game.leagues.map((league) => ({
+      ...league,
+      currentRound: league.currentRound + 1,
+    }));
+
+    updateGame({ ...game, leagues });
+    setView(leagues.every((league) => league.currentRound > league.totalRounds) ? 'seasonEnd' : 'dashboard');
+  }
+
+  function handleStartNextSeason(): void {
+    const nextGame = startNewSeason(game);
+    setGame(nextGame);
+    setView('dashboard');
   }
 
   function handleContinue(): void {
     if (seasonFinished) {
-      const freshGame = startNewSeason();
-      setGame(freshGame);
-      setView('dashboard');
+      handleStartNextSeason();
       return;
     }
 
     if (roundComplete) {
-      if (view === 'standings') {
-        handleNextRound();
-      } else {
-        setView('standings');
-      }
+      handleNextRound();
       return;
     }
 
@@ -87,12 +95,10 @@ export function App() {
   }
 
   function handleReset(): void {
-    const freshGame = restartGame();
+    const freshGame = resetGame();
     setGame(freshGame);
     setView('dashboard');
   }
-
-  const roundComplete = isRoundComplete(currentRoundMatches);
 
   return (
     <main className="app-shell">
@@ -101,7 +107,7 @@ export function App() {
           <div className="brand-mark">mF</div>
           <div>
             <strong>miniFM</strong>
-            <span>第 {game.league.season} 赛季</span>
+            <span>第 {game.leagueSystem.season} 赛季</span>
           </div>
         </div>
 
@@ -126,20 +132,17 @@ export function App() {
           <DashboardPage
             game={game}
             userTeam={userTeam}
+            userLeague={userLeague}
             userMatch={userMatch}
-            standings={standings}
+            standings={userStandings}
             roundComplete={roundComplete}
-            onGoSquad={() => setView('squad')}
-            onGoMatch={() => setView('match')}
-            onGoStandings={() => setView('standings')}
-            onSimulate={handleSimulateRound}
-            onNextRound={handleNextRound}
           />
         )}
 
         {view === 'squad' && (
           <SquadPage
             team={userTeam}
+            league={userLeague}
             players={game.players.filter((player) => player.teamId === userTeam.id)}
             onAutoLineup={handleAutoLineup}
           />
@@ -149,27 +152,33 @@ export function App() {
           <MatchPage
             game={game}
             userTeam={userTeam}
+            userLeague={userLeague}
             userMatch={userMatch}
-            currentRoundMatches={currentRoundMatches}
+            currentRoundMatches={currentLeagueMatches}
             roundComplete={roundComplete}
-            onSimulate={handleSimulateRound}
-            onNextRound={handleNextRound}
-            onGoStandings={() => setView('standings')}
           />
         )}
 
         {view === 'standings' && (
           <StandingsPage
-            teams={game.teams}
-            standings={standings}
-            currentRound={game.league.currentRound}
-            totalRounds={game.league.totalRounds}
-            roundComplete={roundComplete}
-            onNextRound={handleNextRound}
+            game={game}
+            standingsByLeague={standingsByLeague}
+            selectedLeagueId={selectedLeagueId}
+            onSelectLeague={setSelectedLeagueId}
           />
         )}
 
-        {view === 'seasonEnd' && <SeasonEndPage teams={game.teams} standings={standings} onReset={handleReset} />}
+        {view === 'seasonEnd' && (
+          <SeasonEndPage
+            game={game}
+            userTeam={userTeam}
+            userLeague={userLeague}
+            standings={userStandings}
+            movement={seasonMovement}
+            onStartNextSeason={handleStartNextSeason}
+            onReset={handleReset}
+          />
+        )}
       </section>
     </main>
   );
@@ -178,25 +187,17 @@ export function App() {
 function DashboardPage({
   game,
   userTeam,
+  userLeague,
   userMatch,
   standings,
   roundComplete,
-  onGoSquad,
-  onGoMatch,
-  onGoStandings,
-  onSimulate,
-  onNextRound,
 }: {
   game: GameState;
   userTeam: Team;
+  userLeague: League;
   userMatch?: Match;
   standings: Standing[];
   roundComplete: boolean;
-  onGoSquad: () => void;
-  onGoMatch: () => void;
-  onGoStandings: () => void;
-  onSimulate: () => void;
-  onNextRound: () => void;
 }) {
   const rank = standings.findIndex((standing) => standing.teamId === userTeam.id) + 1;
   const opponentId = userMatch?.homeTeamId === userTeam.id ? userMatch.awayTeamId : userMatch?.homeTeamId;
@@ -206,30 +207,35 @@ function DashboardPage({
     <>
       <header className="page-header hero-band">
         <div>
-          <span className="eyebrow">{game.league.name}</span>
+          <span className="eyebrow">{userLeague.name}</span>
           <h1>{userTeam.name}</h1>
           <p>
-            第 {Math.min(game.league.currentRound, game.league.totalRounds)} / {game.league.totalRounds} 轮，
-            当前排名第 {rank || '-'}。
+            第 {Math.min(userLeague.currentRound, userLeague.totalRounds)} / {userLeague.totalRounds} 轮，
+            当前排名第 {rank || '-'}。{roundComplete ? '本轮已完成。' : '本轮等待模拟。'}
           </p>
         </div>
         <img className="jersey-art" src={jerseyImage} alt="" />
       </header>
 
       <section className="summary-grid">
+        <InfoPanel title="所在级别">
+          <strong>{formatLeagueLevel(userLeague)}</strong>
+          <span>{userLeague.name}</span>
+        </InfoPanel>
         <InfoPanel title="下一场">
           <strong>{opponent ? opponent.name : '赛季已完成'}</strong>
           <span>{userMatch ? formatVenue(userMatch, userTeam.id) : '没有待赛比赛'}</span>
         </InfoPanel>
         <InfoPanel title="首发人数">
           <strong>{game.players.filter((player) => player.teamId === userTeam.id && player.isStarter).length} / 11</strong>
+          <span>继续按钮会推进所有联赛同一轮</span>
         </InfoPanel>
       </section>
     </>
   );
 }
 
-function SquadPage({ team, players, onAutoLineup }: { team: Team; players: Player[]; onAutoLineup: () => void }) {
+function SquadPage({ team, league, players, onAutoLineup }: { team: Team; league: League; players: Player[]; onAutoLineup: () => void }) {
   const orderedPlayers = [...players].sort(
     (a, b) => Number(b.isStarter) - Number(a.isStarter) || positionWeight(a.position) - positionWeight(b.position) || b.overall - a.overall,
   );
@@ -238,7 +244,7 @@ function SquadPage({ team, players, onAutoLineup }: { team: Team; players: Playe
     <>
       <header className="page-header">
         <div>
-          <span className="eyebrow">球队阵容</span>
+          <span className="eyebrow">{league.name}</span>
           <h1>{team.name}</h1>
         </div>
         <button type="button" onClick={onAutoLineup}>自动选择首发</button>
@@ -275,29 +281,26 @@ function SquadPage({ team, players, onAutoLineup }: { team: Team; players: Playe
 function MatchPage({
   game,
   userTeam,
+  userLeague,
   userMatch,
   currentRoundMatches,
   roundComplete,
-  onSimulate,
-  onNextRound,
-  onGoStandings,
 }: {
   game: GameState;
   userTeam: Team;
+  userLeague: League;
   userMatch?: Match;
   currentRoundMatches: Match[];
   roundComplete: boolean;
-  onSimulate: () => void;
-  onNextRound: () => void;
-  onGoStandings: () => void;
 }) {
   return (
     <>
       <header className="page-header">
         <div>
-          <span className="eyebrow">第 {game.league.currentRound} 轮</span>
+          <span className="eyebrow">{userLeague.name} · 第 {Math.min(userLeague.currentRound, userLeague.totalRounds)} 轮</span>
           <h1>比赛中心</h1>
         </div>
+        <span className={roundComplete ? 'tag' : 'tag warning'}>{roundComplete ? '本轮完成' : '等待模拟'}</span>
       </header>
 
       {userMatch && (
@@ -322,52 +325,105 @@ function MatchPage({
 }
 
 function StandingsPage({
-  teams,
-  standings,
-  currentRound,
-  totalRounds,
-  roundComplete,
-  onNextRound,
+  game,
+  standingsByLeague,
+  selectedLeagueId,
+  onSelectLeague,
 }: {
-  teams: Team[];
-  standings: Standing[];
-  currentRound: number;
-  totalRounds: number;
-  roundComplete: boolean;
-  onNextRound: () => void;
+  game: GameState;
+  standingsByLeague: Record<string, Standing[]>;
+  selectedLeagueId: string;
+  onSelectLeague: (leagueId: string) => void;
 }) {
+  const selectedLeague = findLeague(game.leagues, selectedLeagueId);
+  const standings = standingsByLeague[selectedLeague.id] ?? [];
+  const teams = game.teams.filter((team) => team.leagueId === selectedLeague.id);
+
   return (
     <>
       <header className="page-header">
         <div>
-          <span className="eyebrow">第 {Math.min(currentRound, totalRounds)} 轮后</span>
+          <span className="eyebrow">第 {Math.min(selectedLeague.currentRound, selectedLeague.totalRounds)} 轮后</span>
           <h1>积分榜</h1>
         </div>
+        <div className="league-tabs" aria-label="联赛切换">
+          {game.leagues
+            .slice()
+            .sort((a, b) => a.level - b.level)
+            .map((league) => (
+              <button
+                className={league.id === selectedLeague.id ? 'tab-button active' : 'tab-button'}
+                type="button"
+                key={league.id}
+                onClick={() => onSelectLeague(league.id)}
+              >
+                {formatLeagueLevel(league)}
+              </button>
+            ))}
+        </div>
       </header>
-      <StandingsTable teams={teams} standings={standings} />
+      <StandingsTable league={selectedLeague} teams={teams} standings={standings} />
     </>
   );
 }
 
-function SeasonEndPage({ teams, standings, onReset }: { teams: Team[]; standings: Standing[]; onReset: () => void }) {
-  const champion = teams.find((team) => team.id === standings[0]?.teamId);
-  const userTeam = teams.find((team) => team.isUserControlled);
-  const userRank = standings.findIndex((standing) => standing.teamId === userTeam?.id) + 1;
+function SeasonEndPage({
+  game,
+  userTeam,
+  userLeague,
+  standings,
+  movement,
+  onStartNextSeason,
+  onReset,
+}: {
+  game: GameState;
+  userTeam: Team;
+  userLeague: League;
+  standings: Standing[];
+  movement: { promoted: Team[]; relegated: Team[] };
+  onStartNextSeason: () => void;
+  onReset: () => void;
+}) {
+  const userRank = standings.findIndex((standing) => standing.teamId === userTeam.id) + 1;
+  const championStanding = getStandingsByLeague(game)[findLeagueByLevel(game.leagues, 1).id]?.[0];
+  const champion = championStanding ? findTeam(game.teams, championStanding.teamId) : undefined;
 
   return (
     <>
       <header className="page-header hero-band">
         <div>
-          <span className="eyebrow">赛季结束</span>
-          <h1>{userTeam?.name} 最终排名第 {userRank || '-'}</h1>
+          <span className="eyebrow">第 {game.leagueSystem.season} 赛季结束</span>
+          <h1>{userTeam.name} 排名第 {userRank || '-'}</h1>
+          <p>
+            {userLeague.name} 完赛。一级冠军：{champion?.name ?? '待定'}。
+          </p>
         </div>
       </header>
-      <StandingsTable teams={teams} standings={standings} />
+
+      <section className="summary-grid">
+        <InfoPanel title="升级球队">
+          <strong>{movement.promoted.map((team) => team.shortName).join('、') || '-'}</strong>
+          <span>二级联赛前 3 名</span>
+        </InfoPanel>
+        <InfoPanel title="降级球队">
+          <strong>{movement.relegated.map((team) => team.shortName).join('、') || '-'}</strong>
+          <span>一级联赛后 3 名</span>
+        </InfoPanel>
+        <InfoPanel title="下一赛季">
+          <strong>第 {parseInt(game.leagueSystem.season, 10) + 1} 赛季</strong>
+          <span>升降级后重新生成赛程</span>
+        </InfoPanel>
+      </section>
+
+      <section className="action-row">
+        <button type="button" onClick={onStartNextSeason}>开启新赛季</button>
+        <button type="button" onClick={onReset}>重新开始</button>
+      </section>
     </>
   );
 }
 
-function StandingsTable({ teams, standings }: { teams: Team[]; standings: Standing[] }) {
+function StandingsTable({ league, teams, standings }: { league: League; teams: Team[]; standings: Standing[] }) {
   return (
     <div className="table-wrap">
       <table>
@@ -375,6 +431,7 @@ function StandingsTable({ teams, standings }: { teams: Team[]; standings: Standi
           <tr>
             <th>排名</th>
             <th>球队</th>
+            <th>状态</th>
             <th>场</th>
             <th>胜</th>
             <th>平</th>
@@ -392,6 +449,7 @@ function StandingsTable({ teams, standings }: { teams: Team[]; standings: Standi
               <tr key={standing.teamId} className={team.isUserControlled ? 'user-row' : undefined}>
                 <td>{index + 1}</td>
                 <td><strong>{team.name}</strong></td>
+                <td>{renderStandingZone(league, index, standings.length)}</td>
                 <td>{standing.played}</td>
                 <td>{standing.wins}</td>
                 <td>{standing.draws}</td>
@@ -435,6 +493,26 @@ function NavButton({ label, active, onClick }: { label: string; active: boolean;
   );
 }
 
+function getStandingsByLeague(game: GameState): Record<string, Standing[]> {
+  return Object.fromEntries(
+    game.leagues.map((league) => [
+      league.id,
+      calculateStandings(
+        game.teams.filter((team) => team.leagueId === league.id),
+        game.matches.filter((match) => match.leagueId === league.id),
+      ),
+    ]),
+  );
+}
+
+function getLeagueRoundMatches(game: GameState, leagueId: string, round: number): Match[] {
+  return game.matches.filter((match) => match.leagueId === leagueId && match.round === round);
+}
+
+function getAllCurrentRoundMatches(game: GameState): Match[] {
+  return game.leagues.flatMap((league) => getLeagueRoundMatches(game, league.id, league.currentRound));
+}
+
 function isRoundComplete(matches: Match[]): boolean {
   return matches.length > 0 && matches.every((match) => match.status === 'played');
 }
@@ -447,8 +525,40 @@ function findTeam(teams: Team[], id: string): Team {
   return team;
 }
 
+function findLeague(leagues: League[], id: string): League {
+  const league = leagues.find((item) => item.id === id);
+  if (!league) {
+    throw new Error(`Missing league ${id}`);
+  }
+  return league;
+}
+
+function findLeagueByLevel(leagues: League[], level: number): League {
+  const league = leagues.find((item) => item.level === level);
+  if (!league) {
+    throw new Error(`Missing league level ${level}`);
+  }
+  return league;
+}
+
+function formatLeagueLevel(league: League): string {
+  return league.level === 1 ? '一级联赛' : '二级联赛';
+}
+
 function formatVenue(match: Match, userTeamId: string): string {
   return match.homeTeamId === userTeamId ? '主场作战' : '客场挑战';
+}
+
+function renderStandingZone(league: League, index: number, totalTeams: number): ReactNode {
+  if (league.level === 2 && index < 3) {
+    return <span className="tag">升级</span>;
+  }
+
+  if (league.level === 1 && index >= totalTeams - 3) {
+    return <span className="tag danger">降级</span>;
+  }
+
+  return <span className="muted">-</span>;
 }
 
 function positionWeight(position: Player['position']): number {

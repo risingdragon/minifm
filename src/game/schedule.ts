@@ -1,6 +1,6 @@
 import type { Match, Team } from '../models/types';
 
-export function createDoubleRoundRobinSchedule(teams: Team[]): Match[] {
+export function createDoubleRoundRobinSchedule(leagueId: string, teams: Team[]): Match[] {
   const ids = teams.map((team) => team.id);
   const rounds: Match[][] = [];
   const rotating = ids.slice();
@@ -17,7 +17,8 @@ export function createDoubleRoundRobinSchedule(teams: Team[]): Match[] {
       const awayTeamId = flipHome ? first : second;
 
       matches.push({
-        id: `r${round}-m${index + 1}`,
+        id: `${leagueId}-r${round}-m${index + 1}`,
+        leagueId,
         round,
         homeTeamId,
         awayTeamId,
@@ -40,7 +41,7 @@ export function createDoubleRoundRobinSchedule(teams: Team[]): Match[] {
   const secondLeg = rounds.map((matches, index) =>
     matches.map((match, matchIndex) => ({
       ...match,
-      id: `r${index + teamCount}-m${matchIndex + 1}`,
+      id: `${leagueId}-r${index + teamCount}-m${matchIndex + 1}`,
       round: index + teamCount,
       homeTeamId: match.awayTeamId,
       awayTeamId: match.homeTeamId,

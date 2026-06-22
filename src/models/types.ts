@@ -15,6 +15,7 @@ export interface Team {
   id: string;
   name: string;
   shortName: string;
+  leagueId: string;
   players: string[];
   isUserControlled: boolean;
   primaryColor: string;
@@ -22,6 +23,7 @@ export interface Team {
 
 export interface Match {
   id: string;
+  leagueId: string;
   round: number;
   homeTeamId: string;
   awayTeamId: string;
@@ -33,11 +35,21 @@ export interface Match {
 export interface League {
   id: string;
   name: string;
+  level: number;
   season: string;
   teamIds: string[];
   matches: string[];
   currentRound: number;
   totalRounds: number;
+}
+
+export interface LeagueSystem {
+  id: string;
+  season: string;
+  leagueIds: string[];
+  promotionSlots: number;
+  relegationSlots: number;
+  lowestLevel: number;
 }
 
 export interface Standing {
@@ -53,10 +65,12 @@ export interface Standing {
 }
 
 export interface GameState {
-  league: League;
+  leagueSystem: LeagueSystem;
+  leagues: League[];
   teams: Team[];
   players: Player[];
   matches: Match[];
+  userTeamId: string;
 }
 
 export type View = 'dashboard' | 'squad' | 'match' | 'standings' | 'seasonEnd';
