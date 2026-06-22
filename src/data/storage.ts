@@ -24,7 +24,7 @@ export function saveGame(state: GameState): void {
   window.localStorage.setItem(SEASON_KEY, state.league.season);
 }
 
-export function resetGame(): GameState {
+export function startNewSeason(): GameState {
   const currentSeason = window.localStorage.getItem(SEASON_KEY);
   const nextSeason = currentSeason ? String(parseInt(currentSeason, 10) + 1) : '1';
 
@@ -35,7 +35,7 @@ export function resetGame(): GameState {
   return freshGame;
 }
 
-export function restartGame(): GameState {
+export function resetGame(): GameState {
   window.localStorage.removeItem(SEASON_KEY);
 
   const freshGame = createNewGame();

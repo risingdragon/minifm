@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import jerseyImage from '../../assets/lineup-jersey.png';
-import { resetGame, restartGame, loadGame, saveGame } from '../data/storage';
+import { resetGame, startNewSeason, loadGame, saveGame } from '../data/storage';
 import { selectAutoLineup } from '../game/lineup';
 import { simulateRound } from '../game/simulator';
 import { calculateStandings } from '../game/standings';
@@ -68,7 +68,9 @@ export function App() {
 
   function handleContinue(): void {
     if (seasonFinished) {
-      handleReset();
+      const freshGame = startNewSeason();
+      setGame(freshGame);
+      setView('dashboard');
       return;
     }
 
