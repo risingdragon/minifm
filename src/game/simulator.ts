@@ -25,10 +25,6 @@ export function simulateRound(round: number, matches: Match[], teams: Team[], pl
     const awayPower = calculateTeamPower(awayTeam.id, updatedPlayers);
     const homeScore = generateScore(homePower, awayPower);
     const awayScore = generateScore(awayPower, homePower);
-    const growthResult = settleGrowthAfterMatch(updatedPlayers);
-
-    updatedPlayers = growthResult.players;
-    growthChanges.push(...growthResult.changes);
 
     return {
       ...match,
@@ -37,6 +33,11 @@ export function simulateRound(round: number, matches: Match[], teams: Team[], pl
       status: 'played' as const,
     };
   });
+
+  // 每轮比赛结束后统一结算成长，只执行一次
+  const growthResult = settleGrowthAfterMatch(updatedPlayers);
+  updatedPlayers = growthResult.players;
+  growthChanges.push(...growthResult.changes);
 
   return { matches: updatedMatches, players: updatedPlayers, growthChanges };
 }

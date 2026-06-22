@@ -411,11 +411,6 @@ function SeasonEndPage({
           <strong>第 {parseInt(game.leagueSystem.season, 10) + 1} 赛季</strong>
         </InfoPanel>
       </section>
-
-      <section className="action-row">
-        <button type="button" onClick={onStartNextSeason}>开启新赛季</button>
-        <button type="button" onClick={onReset}>重新开始</button>
-      </section>
     </>
   );
 }

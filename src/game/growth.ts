@@ -64,46 +64,31 @@ function getAbilityDelta(player: Player): number {
 
   if (player.age <= 20) {
     return growthRoom > 0
-      ? weightedRandom([
-          [1, 85],
-          [2, 15],
-        ])
-      : -1;
+      ? weightedRandom([[1, 50], [0, 50]])
+      : 0;
   }
 
-  if (player.age <= 24) {
+  if (player.age <= 25) {
     return growthRoom > 0
-      ? weightedRandom([
-          [1, 92],
-          [2, 8],
-        ])
-      : -1;
+      ? weightedRandom([[1, 20], [0, 80]])
+      : 0;
   }
 
-  if (player.age <= 29) {
+  if (player.age <= 30) {
     return growthRoom > 0
-      ? weightedRandom([
-          [-1, 35],
-          [1, 65],
-        ])
-      : -1;
+      ? weightedRandom([[1, 10], [0, 90]])
+      : 0;
   }
 
-  if (player.age <= 32) {
-    return weightedRandom([
-      [-1, 85],
-      [1, 15],
-    ]);
+  if (player.age <= 35) {
+    return weightedRandom([[-1, 25], [0, 75]]);
   }
 
-  return weightedRandom([
-    [-2, 20],
-    [-1, 80],
-  ]);
+  return weightedRandom([[-1, 50], [0, 50]]);
 }
 
 function inferPotential(player: Player): number {
-  const ageBonus = player.age <= 20 ? 22 : player.age <= 24 ? 14 : player.age <= 29 ? 7 : 0;
+  const ageBonus = player.age <= 20 ? 22 : player.age <= 25 ? 14 : player.age <= 30 ? 7 : 0;
   return Math.min(200, player.overall + ageBonus);
 }
 
