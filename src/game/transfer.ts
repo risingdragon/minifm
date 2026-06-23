@@ -28,7 +28,7 @@ export function buyPlayer(game: GameState, playerId: string): GameState {
   const player = game.players.find((item) => item.id === playerId);
   const buyer = game.teams.find((team) => team.id === game.userTeamId);
 
-  if (!player || !buyer || player.teamId === buyer.id || player.isGeneratedFillIn) {
+  if (!player || !buyer || player.teamId === buyer.id) {
     return game;
   }
 
@@ -104,7 +104,7 @@ export function sellPlayer(game: GameState, playerId: string): GameState {
   const player = game.players.find((item) => item.id === playerId);
   const seller = game.teams.find((team) => team.id === game.userTeamId);
 
-  if (!player || !seller || player.teamId !== seller.id || player.isGeneratedFillIn) {
+  if (!player || !seller || player.teamId !== seller.id) {
     return game;
   }
 
@@ -146,12 +146,12 @@ export function sellPlayer(game: GameState, playerId: string): GameState {
 }
 
 export function countRegularPlayers(players: Player[], teamId: string): number {
-  return players.filter((player) => player.teamId === teamId && !player.isGeneratedFillIn).length;
+  return players.filter((player) => player.teamId === teamId).length;
 }
 
 function selectListedPlayers(players: Player[], userTeamId: string): string[] {
   return players
-    .filter((player) => player.teamId !== userTeamId && !player.isGeneratedFillIn)
+    .filter((player) => player.teamId !== userTeamId && !player.isStarter)
     .sort((a, b) => marketScore(b) - marketScore(a))
     .slice(0, MARKET_SIZE)
     .map((player) => player.id);

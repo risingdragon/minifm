@@ -1,4 +1,5 @@
 import type { Player, Position, Team } from '../models/types';
+import { calculateMarketValue, calculateWeeklyWage } from './finance';
 
 const FORMATION: Record<Position, number> = {
   GK: 1,
@@ -11,6 +12,7 @@ export function selectAutoLineup(team: Team, players: Player[]): Player[] {
   const teamPlayers = players
     .filter((player) => player.teamId === team.id)
     .map((player) => ({ ...player, isStarter: false }));
+  const existingPlayerIds = new Set(teamPlayers.map((player) => player.id));
 
   const selected: Player[] = [];
 
@@ -32,19 +34,29 @@ export function selectAutoLineup(team: Team, players: Player[]): Player[] {
   }
 
   while (selected.length < 11) {
-    const fillInIndex = selected.length + 1;
+    let fillInIndex = selected.length + 1;
+    while (
+      existingPlayerIds.has(`${team.id}-fill-${fillInIndex}`) ||
+      selected.some((player) => player.id === `${team.id}-fill-${fillInIndex}`)
+    ) {
+      fillInIndex += 1;
+    }
+    const age = 18;
+    const overall = 1;
+    const potential = 1 + randomInt(12, 32);
+    const marketValue = calculateMarketValue({ age, overall, potential });
     selected.push({
       id: `${team.id}-fill-${fillInIndex}`,
-      name: `补位球员 ${fillInIndex}`,
-      age: 18,
+      name: `填充球员 ${fillInIndex}`,
+      age,
       position: selected.length === 0 ? 'GK' : 'DF',
       teamId: team.id,
-      overall: 1,
-      potential: 1,
-      marketValue: 0,
-      weeklyWage: 0,
-      contractYears: 0,
-      isListed: false,
+      overall,
+      potential,
+      marketValue,
+      weeklyWage: calculateWeeklyWage(marketValue),
+      contractYears: randomInt(1, 5),
+      isListed: Math.random() < 0.25,
       isStarter: true,
       isGeneratedFillIn: true,
     });
@@ -55,7 +67,7 @@ export function selectAutoLineup(team: Team, players: Player[]): Player[] {
       ...player,
       isStarter: selected.some((starter) => starter.id === player.id),
     }))
-    .concat(selected.filter((player) => player.isGeneratedFillIn));
+    .concat(selected.filter((player) => player.isGeneratedFillIn && !existingPlayerIds.has(player.id)));
 }
 
 export function selectLineupForAllTeams(teams: Team[], players: Player[]): Player[] {
@@ -77,7 +89,7 @@ export interface LineupWarning {
 
 export function detectLineupWarnings(team: Team, players: Player[]): LineupWarning[] {
   const teamPlayers = players
-    .filter((player) => player.teamId === team.id && !player.isGeneratedFillIn);
+    .filter((player) => player.teamId === team.id);
 
   const starters = teamPlayers.filter((player) => player.isStarter);
   const substitutes = teamPlayers.filter((player) => !player.isStarter);
@@ -112,4 +124,8 @@ export function detectLineupWarnings(team: Team, players: Player[]): LineupWarni
 
 function positionOrder(position: Position): number {
   return ['GK', 'DF', 'MF', 'FW'].indexOf(position);
+}
+
+function randomInt(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }

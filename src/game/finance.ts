@@ -13,16 +13,6 @@ export function calculateWeeklyWage(marketValue: number): number {
 }
 
 export function refreshPlayerFinance(player: Player): Player {
-  if (player.isGeneratedFillIn) {
-    return {
-      ...player,
-      marketValue: 0,
-      weeklyWage: 0,
-      contractYears: 0,
-      isListed: false,
-    };
-  }
-
   const marketValue = calculateMarketValue(player);
 
   return {
@@ -86,7 +76,7 @@ export function settleMatchFinances({
 
   teams.forEach((team) => {
     const wageExpense = players
-      .filter((player) => player.teamId === team.id && !player.isGeneratedFillIn)
+      .filter((player) => player.teamId === team.id)
       .reduce((total, player) => total + player.weeklyWage, 0);
 
     addDelta(team.id, -wageExpense, 'wageExpense', `${team.name} weekly wages`);

@@ -19,10 +19,6 @@ export function settleGrowthAfterMatch(players: Player[]): {
   const nextPlayers = players.map((player) => {
     const normalized = normalizePlayer(player);
 
-    if (normalized.isGeneratedFillIn) {
-      return normalized;
-    }
-
     const previousOverall = normalized.overall;
     const delta = getAbilityDelta(normalized);
     const nextOverall = clamp(previousOverall + delta, 1, normalized.potential);
@@ -48,10 +44,6 @@ export function settleGrowthAfterMatch(players: Player[]): {
 export function agePlayersForNewSeason(players: Player[]): Player[] {
   return players.map((player) => {
     const normalized = normalizePlayer(player);
-
-    if (normalized.isGeneratedFillIn) {
-      return normalized;
-    }
 
     return refreshPlayerFinance({
       ...normalized,

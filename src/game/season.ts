@@ -41,7 +41,7 @@ export function createNextSeasonGame(game: GameState): GameState {
   });
   const nextLeagues = createLeagues(nextSeason);
   const { leaguesWithSchedule, matches } = createSchedules(nextLeagues, nextTeams);
-  const nextPlayers = selectLineupForAllTeams(nextTeams, agePlayersForNewSeason(game.players.filter((player) => !player.isGeneratedFillIn)));
+  const nextPlayers = selectLineupForAllTeams(nextTeams, agePlayersForNewSeason(game.players));
 
   return {
       ...game,
