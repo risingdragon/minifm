@@ -245,6 +245,23 @@ th {
   gap: 10px;
 }
 
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.section-header h2 {
+  margin: 4px 0 0;
+  font-size: 22px;
+}
+
+.transfer-section {
+  margin-top: 22px;
+}
+
 .table-wrap {
   overflow-x: auto;
   border: 1px solid #d8e2dd;

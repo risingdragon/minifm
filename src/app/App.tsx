@@ -5,7 +5,7 @@ import { selectAutoLineup, detectLineupWarnings } from '../game/lineup';
 import { getSeasonMovement } from '../game/season';
 import { simulateRound } from '../game/simulator';
 import { calculateStandings } from '../game/standings';
-import { buyPlayer, countRegularPlayers, createTransferMarket } from '../game/transfer';
+import { buyPlayer, countRegularPlayers, createTransferMarket, MAX_REGULAR_PLAYERS_PER_TEAM, MIN_REGULAR_PLAYERS_PER_TEAM, sellPlayer } from '../game/transfer';
 import type { GameState, League, Match, Player, PlayerGrowthChange, Position, Standing, Team, View } from '../models/types';
 
 export function App() {
@@ -104,6 +104,10 @@ export function App() {
     setGame((current) => buyPlayer(current, playerId));
   }
 
+  function handleSellPlayer(playerId: string): void {
+    setGame((current) => sellPlayer(current, playerId));
+  }
+
   function handleReset(): void {
     const freshGame = resetGame();
     setGame(freshGame);
@@ -155,6 +159,7 @@ export function App() {
             league={userLeague}
             players={game.players.filter((player) => player.teamId === userTeam.id)}
             onAutoLineup={handleAutoLineup}
+            onSellPlayer={handleSellPlayer}
           />
         )}
 
@@ -187,6 +192,7 @@ export function App() {
             game={game}
             userTeam={userTeam}
             onBuyPlayer={handleBuyPlayer}
+            onSellPlayer={handleSellPlayer}
           />
         )}
 
@@ -273,8 +279,21 @@ function DashboardPage({
   );
 }
 
-function SquadPage({ team, league, players, onAutoLineup }: { team: Team; league: League; players: Player[]; onAutoLineup: () => void }) {
+function SquadPage({
+  team,
+  league,
+  players,
+  onAutoLineup,
+  onSellPlayer,
+}: {
+  team: Team;
+  league: League;
+  players: Player[];
+  onAutoLineup: () => void;
+  onSellPlayer: (playerId: string) => void;
+}) {
   const [sort, setSort] = useState<SquadSortState>({ key: 'status', direction: 'asc' });
+  const regularPlayerCount = players.filter((player) => !player.isGeneratedFillIn).length;
 
   function handleSort(key: SquadSortKey): void {
     setSort((current) => ({
@@ -308,22 +327,31 @@ function SquadPage({ team, league, players, onAutoLineup }: { team: Team; league
               <SortableHeader label="身价" sortKey="marketValue" sort={sort} onSort={handleSort} />
               <SortableHeader label="周薪" sortKey="weeklyWage" sort={sort} onSort={handleSort} />
               <SortableHeader label="合同" sortKey="contractYears" sort={sort} onSort={handleSort} />
+              <th>操作</th>
             </tr>
           </thead>
           <tbody>
-            {orderedPlayers.map((player) => (
-              <tr key={player.id}>
-                <td>{player.isStarter ? <span className="tag">首发</span> : <span className="muted">替补</span>}</td>
-                <td>{player.name}</td>
-                <td>{player.age}</td>
-                <td>{player.position}</td>
-                <td><strong>{player.overall}</strong></td>
-                <td>{player.potential}</td>
-                <td>{formatMoney(player.marketValue)}</td>
-                <td>{formatMoney(player.weeklyWage)}</td>
-                <td>{player.contractYears} 年</td>
-              </tr>
-            ))}
+            {orderedPlayers.map((player) => {
+              const cannotSell = Boolean(player.isGeneratedFillIn) || regularPlayerCount <= MIN_REGULAR_PLAYERS_PER_TEAM;
+              return (
+                <tr key={player.id}>
+                  <td>{player.isStarter ? <span className="tag">首发</span> : <span className="muted">替补</span>}</td>
+                  <td>{player.name}</td>
+                  <td>{player.age}</td>
+                  <td>{player.position}</td>
+                  <td><strong>{player.overall}</strong></td>
+                  <td>{player.potential}</td>
+                  <td>{formatMoney(player.marketValue)}</td>
+                  <td>{formatMoney(player.weeklyWage)}</td>
+                  <td>{player.contractYears} 年</td>
+                  <td>
+                    <button type="button" disabled={cannotSell} onClick={() => onSellPlayer(player.id)}>
+                      卖出
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -482,7 +510,10 @@ function TransferMarketPage({ game, userTeam, onBuyPlayer }: { game: GameState; 
           <tbody>
             {marketPlayers.map((player) => {
               const seller = findTeam(game.teams, player.teamId);
-              const cannotBuy = userTeam.balance < player.marketValue || countRegularPlayers(game.players, seller.id) <= 11;
+              const cannotBuy =
+                userTeam.balance < player.marketValue ||
+                countRegularPlayers(game.players, userTeam.id) >= MAX_REGULAR_PLAYERS_PER_TEAM ||
+                countRegularPlayers(game.players, seller.id) <= 11;
               return (
                 <tr key={player.id}>
                   <td><strong>{player.name}</strong></td>
@@ -507,7 +538,17 @@ function TransferMarketPage({ game, userTeam, onBuyPlayer }: { game: GameState; 
   );
 }
 
-function TransferMarketPageSorted({ game, userTeam, onBuyPlayer }: { game: GameState; userTeam: Team; onBuyPlayer: (playerId: string) => void }) {
+function TransferMarketPageSorted({
+  game,
+  userTeam,
+  onBuyPlayer,
+  onSellPlayer,
+}: {
+  game: GameState;
+  userTeam: Team;
+  onBuyPlayer: (playerId: string) => void;
+  onSellPlayer: (playerId: string) => void;
+}) {
   const [sort, setSort] = useState<TransferSortState>({ key: 'marketValue', direction: 'desc' });
   const [positionFilter, setPositionFilter] = useState<TransferPositionFilter>('ALL');
   const marketPlayers = game.transferMarket.listedPlayerIds
@@ -515,6 +556,10 @@ function TransferMarketPageSorted({ game, userTeam, onBuyPlayer }: { game: GameS
     .filter((player): player is Player => Boolean(player))
     .filter((player) => positionFilter === 'ALL' || player.position === positionFilter)
     .sort((a, b) => compareTransferPlayers(a, b, game.teams, sort));
+  const userPlayers = game.players
+    .filter((player) => player.teamId === userTeam.id && !player.isGeneratedFillIn)
+    .sort((a, b) => b.marketValue - a.marketValue || b.overall - a.overall);
+  const cannotSellAny = userPlayers.length <= MIN_REGULAR_PLAYERS_PER_TEAM;
 
   function handleSort(key: TransferSortKey): void {
     setSort((current) => ({
@@ -563,7 +608,10 @@ function TransferMarketPageSorted({ game, userTeam, onBuyPlayer }: { game: GameS
           <tbody>
             {marketPlayers.map((player) => {
               const seller = findTeam(game.teams, player.teamId);
-              const cannotBuy = userTeam.balance < player.marketValue || countRegularPlayers(game.players, seller.id) <= 11;
+              const cannotBuy =
+                userTeam.balance < player.marketValue ||
+                countRegularPlayers(game.players, userTeam.id) >= MAX_REGULAR_PLAYERS_PER_TEAM ||
+                countRegularPlayers(game.players, seller.id) <= 11;
               return (
                 <tr key={player.id}>
                   <td><strong>{player.name}</strong></td>
@@ -584,6 +632,52 @@ function TransferMarketPageSorted({ game, userTeam, onBuyPlayer }: { game: GameS
           </tbody>
         </table>
       </div>
+
+      <section className="transfer-section">
+        <header className="section-header">
+          <div>
+            <span className="eyebrow">出售球员</span>
+            <h2>本队球员</h2>
+          </div>
+          <span className="muted">{userPlayers.length} / {MAX_REGULAR_PLAYERS_PER_TEAM}</span>
+        </header>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>球员</th>
+                <th>年龄</th>
+                <th>位置</th>
+                <th>能力</th>
+                <th>潜力</th>
+                <th>卖出金额</th>
+                <th>周薪</th>
+                <th>合同</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {userPlayers.map((player) => (
+                <tr key={player.id}>
+                  <td><strong>{player.name}</strong></td>
+                  <td>{player.age}</td>
+                  <td>{player.position}</td>
+                  <td>{player.overall}</td>
+                  <td>{player.potential}</td>
+                  <td>{formatMoney(player.marketValue)}</td>
+                  <td>{formatMoney(player.weeklyWage)}</td>
+                  <td>{player.contractYears} 年</td>
+                  <td>
+                    <button type="button" disabled={cannotSellAny} onClick={() => onSellPlayer(player.id)}>
+                      卖出
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </>
   );
 }

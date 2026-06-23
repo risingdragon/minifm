@@ -1,6 +1,8 @@
 import type { FinanceLog, GameState, Player, Team, TransferMarket } from '../models/types';
 
 const MARKET_SIZE = 24;
+export const MAX_REGULAR_PLAYERS_PER_TEAM = 25;
+export const MIN_REGULAR_PLAYERS_PER_TEAM = 11;
 
 export function createTransferMarket(players: Player[], userTeamId: string, season: string, round: number): TransferMarket {
   return {
@@ -32,7 +34,12 @@ export function buyPlayer(game: GameState, playerId: string): GameState {
 
   const seller = game.teams.find((team) => team.id === player.teamId);
 
-  if (!seller || buyer.balance < player.marketValue || countRegularPlayers(game.players, seller.id) <= 11) {
+  if (
+    !seller ||
+    buyer.balance < player.marketValue ||
+    countRegularPlayers(game.players, buyer.id) >= MAX_REGULAR_PLAYERS_PER_TEAM ||
+    countRegularPlayers(game.players, seller.id) <= MIN_REGULAR_PLAYERS_PER_TEAM
+  ) {
     return game;
   }
 
@@ -90,6 +97,51 @@ export function buyPlayer(game: GameState, playerId: string): GameState {
       listedPlayerIds: game.transferMarket.listedPlayerIds.filter((id) => id !== player.id),
     },
     financeLogs: [...game.financeLogs, ...logs],
+  };
+}
+
+export function sellPlayer(game: GameState, playerId: string): GameState {
+  const player = game.players.find((item) => item.id === playerId);
+  const seller = game.teams.find((team) => team.id === game.userTeamId);
+
+  if (!player || !seller || player.teamId !== seller.id || player.isGeneratedFillIn) {
+    return game;
+  }
+
+  if (countRegularPlayers(game.players, seller.id) <= MIN_REGULAR_PLAYERS_PER_TEAM) {
+    return game;
+  }
+
+  const fee = player.marketValue;
+  const teams = game.teams.map((team) =>
+    team.id === seller.id
+      ? {
+          ...team,
+          balance: team.balance + fee,
+          players: team.players.filter((id) => id !== player.id),
+        }
+      : team,
+  );
+  const players = game.players.filter((item) => item.id !== player.id);
+  const log: FinanceLog = {
+    id: `transfer-${game.leagueSystem.season}-${Date.now()}-sale`,
+    season: game.leagueSystem.season,
+    round: null,
+    teamId: seller.id,
+    type: 'transferFee',
+    amount: fee,
+    description: `${seller.name} sold ${player.name}`,
+  };
+
+  return {
+    ...game,
+    teams,
+    players,
+    transferMarket: {
+      ...game.transferMarket,
+      listedPlayerIds: game.transferMarket.listedPlayerIds.filter((id) => id !== player.id),
+    },
+    financeLogs: [...game.financeLogs, log],
   };
 }
 

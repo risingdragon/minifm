@@ -58,6 +58,48 @@ const lowerTeamNames = [
 const surnames = ['林', '周', '陈', '吴', '郑', '赵', '孙', '冯', '许', '高', '梁', '宋', '唐', '韩', '曹'];
 const givenNames = ['远', '鸣', '澈', '峻', '南', '航', '越', '川', '熙', '辰', '枫', '然', '烨', '衡', '皓'];
 
+const POSITION_COUNTS: Record<Position, number> = {
+  GK: 3,
+  DF: 8,
+  MF: 9,
+  FW: 5,
+};
+
+const ABILITY_BANDS = [
+  { min: 191, max: 200, count: 1 },
+  { min: 181, max: 190, count: 3 },
+  { min: 171, max: 180, count: 6 },
+  { min: 161, max: 170, count: 10 },
+  { min: 151, max: 160, count: 15 },
+  { min: 141, max: 150, count: 21 },
+  { min: 131, max: 140, count: 28 },
+  { min: 121, max: 130, count: 35 },
+  { min: 111, max: 120, count: 42 },
+  { min: 101, max: 110, count: 49 },
+  { min: 91, max: 100, count: 56 },
+  { min: 81, max: 90, count: 63 },
+  { min: 71, max: 80, count: 70 },
+  { min: 61, max: 70, count: 77 },
+  { min: 51, max: 60, count: 84 },
+  { min: 41, max: 50, count: 91 },
+  { min: 31, max: 40, count: 98 },
+  { min: 21, max: 30, count: 105 },
+  { min: 11, max: 20, count: 112 },
+  { min: 1, max: 10, count: 34 },
+];
+
+interface PlayerCandidate {
+  name: string;
+  age: number;
+  position: Position;
+  overall: number;
+  potential: number;
+  marketValue: number;
+  weeklyWage: number;
+  contractYears: number;
+  isListed: boolean;
+}
+
 export function createNewGame(): GameState {
   const leagues = createLeagues('1');
   const teams = createTeams(leagues);
@@ -65,7 +107,7 @@ export function createNewGame(): GameState {
   const lowestTeams = teams.filter((team) => team.leagueId === lowestLeague.id);
   const userTeam = lowestTeams[Math.floor(Math.random() * lowestTeams.length)];
   const teamsWithUser = teams.map((team) => ({ ...team, isUserControlled: team.id === userTeam.id }));
-  const players = teamsWithUser.flatMap((team, index) => createTeamPlayers(team.id, index, team.leagueId));
+  const players = createInitialPlayers(teamsWithUser);
   const teamsWithPlayers = teamsWithUser.map((team) => ({
     ...team,
     players: players.filter((player) => player.teamId === team.id).map((player) => player.id),
@@ -140,34 +182,212 @@ function createTeams(leagues: League[]): Team[] {
   );
 }
 
-function createTeamPlayers(teamId: string, teamIndex: number, leagueId: string): Player[] {
-  const positions: Position[] = ['GK', 'GK', 'DF', 'DF', 'DF', 'DF', 'DF', 'MF', 'MF', 'MF', 'MF', 'MF', 'FW', 'FW', 'FW'];
-  const leagueBias = leagueId === 'league-1' ? 8 : 0;
-  const teamBias = 6 - Math.abs((teamIndex % 20) - 5) * 0.35;
+function createInitialPlayers(teams: Team[]): Player[] {
+  const candidatesByPosition = createPlayerPoolByPosition();
+  const topTeams = teams.filter((team) => team.leagueId === 'league-1');
+  const lowerTeams = teams.filter((team) => team.leagueId === 'league-2');
+  const players = assignPlayersToLeagues(candidatesByPosition, topTeams, lowerTeams, 0.12);
+  const topAverage = averageOverall(players, topTeams);
+  const lowerAverage = averageOverall(players, lowerTeams);
 
-  return positions.map((position, index) => {
-    const abilityBase = 56 + leagueBias + teamBias + (position === 'GK' ? 1 : 0);
-    const swing = ((teamIndex * 11 + index * 7) % 18) - 6;
-    const overall = Math.max(38, Math.min(96, Math.round(abilityBase + swing)));
-    const age = 18 + ((teamIndex * 5 + index * 2) % 17);
-    const potentialBase = overall + (age <= 20 ? 24 : age <= 24 ? 16 : age <= 29 ? 8 : 2);
-    const potentialSwing = (teamIndex * 5 + index * 3) % 10;
-    const potential = Math.max(overall, Math.min(200, potentialBase + potentialSwing));
-    const marketValue = calculateMarketValue({ age, overall, potential });
+  if (topAverage - lowerAverage < 8) {
+    return assignPlayersToLeagues(candidatesByPosition, topTeams, lowerTeams, 0);
+  }
 
-    return {
-      id: `${teamId}-player-${index + 1}`,
-      name: `${surnames[(teamIndex + index) % surnames.length]}${givenNames[(teamIndex * 3 + index) % givenNames.length]}`,
-      age,
-      position,
-      teamId,
-      overall,
-      potential,
-      marketValue,
-      weeklyWage: calculateWeeklyWage(marketValue),
-      contractYears: 1 + ((teamIndex + index) % 5),
-      isListed: (teamIndex * 3 + index) % 4 === 0,
-      isStarter: false,
-    };
+  return players;
+}
+
+function createPlayerPoolByPosition(): Record<Position, PlayerCandidate[]> {
+  const positions: Position[] = ['GK', 'DF', 'MF', 'FW'];
+  const positionSlots = positions.flatMap((position) => Array.from({ length: POSITION_COUNTS[position] * 40 }, () => position));
+  const shuffledPositions = shuffle(positionSlots);
+  const candidates = ABILITY_BANDS.flatMap((band) =>
+    Array.from({ length: band.count }, () => {
+      const position = shuffledPositions.pop();
+      if (!position) {
+        throw new Error('Not enough position slots for player pool.');
+      }
+      return createPlayerCandidate(position, band.min, band.max);
+    }),
+  );
+
+  return {
+    GK: candidates.filter((player) => player.position === 'GK').sort(byOverallDesc),
+    DF: candidates.filter((player) => player.position === 'DF').sort(byOverallDesc),
+    MF: candidates.filter((player) => player.position === 'MF').sort(byOverallDesc),
+    FW: candidates.filter((player) => player.position === 'FW').sort(byOverallDesc),
+  };
+}
+
+function createPlayerCandidate(position: Position, minOverall: number, maxOverall: number): PlayerCandidate {
+  const overall = clamp(randomInt(minOverall, maxOverall) + randomInt(-4, 4), 1, 200);
+  const age = createAge();
+  const potential = clamp(overall + createPotentialGap(age), overall, 200);
+  const marketValue = calculateMarketValue({ age, overall, potential });
+  const nameIndex = randomInt(0, surnames.length * givenNames.length - 1);
+
+  return {
+    name: `${surnames[nameIndex % surnames.length]}${givenNames[Math.floor(nameIndex / surnames.length) % givenNames.length]}`,
+    age,
+    position,
+    overall,
+    potential,
+    marketValue,
+    weeklyWage: calculateWeeklyWage(marketValue),
+    contractYears: randomInt(1, 5),
+    isListed: Math.random() < 0.25,
+  };
+}
+
+function assignPlayersToLeagues(
+  candidatesByPosition: Record<Position, PlayerCandidate[]>,
+  topTeams: Team[],
+  lowerTeams: Team[],
+  swapRatio: number,
+): Player[] {
+  const leaguePools = splitLeaguePools(candidatesByPosition, swapRatio);
+
+  return [
+    ...assignPlayersToTeams(leaguePools.top, topTeams),
+    ...assignPlayersToTeams(leaguePools.lower, lowerTeams),
+  ];
+}
+
+function splitLeaguePools(
+  candidatesByPosition: Record<Position, PlayerCandidate[]>,
+  swapRatio: number,
+): { top: Record<Position, PlayerCandidate[]>; lower: Record<Position, PlayerCandidate[]> } {
+  const top = clonePositionPools(candidatesByPosition, 0, 20);
+  const lower = clonePositionPools(candidatesByPosition, 20, 40);
+
+  (Object.keys(POSITION_COUNTS) as Position[]).forEach((position) => {
+    const swapCount = Math.floor(POSITION_COUNTS[position] * 20 * swapRatio);
+
+    for (let index = 0; index < swapCount; index += 1) {
+      const topIndex = top[position].length - 1 - index;
+      const lowerIndex = index;
+      const topPlayer = top[position][topIndex];
+      const lowerPlayer = lower[position][lowerIndex];
+      top[position][topIndex] = lowerPlayer;
+      lower[position][lowerIndex] = topPlayer;
+    }
+
+    top[position].sort(byOverallDesc);
+    lower[position].sort(byOverallDesc);
   });
+
+  return { top, lower };
+}
+
+function clonePositionPools(candidatesByPosition: Record<Position, PlayerCandidate[]>, teamStart: number, teamEnd: number): Record<Position, PlayerCandidate[]> {
+  return {
+    GK: candidatesByPosition.GK.slice(teamStart * POSITION_COUNTS.GK, teamEnd * POSITION_COUNTS.GK),
+    DF: candidatesByPosition.DF.slice(teamStart * POSITION_COUNTS.DF, teamEnd * POSITION_COUNTS.DF),
+    MF: candidatesByPosition.MF.slice(teamStart * POSITION_COUNTS.MF, teamEnd * POSITION_COUNTS.MF),
+    FW: candidatesByPosition.FW.slice(teamStart * POSITION_COUNTS.FW, teamEnd * POSITION_COUNTS.FW),
+  };
+}
+
+function assignPlayersToTeams(pools: Record<Position, PlayerCandidate[]>, teams: Team[]): Player[] {
+  const orderedTeams = teams.slice().sort((a, b) => teamStrengthRank(a) - teamStrengthRank(b));
+  const players: Player[] = [];
+
+  orderedTeams.forEach((team, teamIndex) => {
+    let playerNumber = 1;
+
+    (Object.keys(POSITION_COUNTS) as Position[]).forEach((position) => {
+      const count = POSITION_COUNTS[position];
+      const start = teamIndex * count;
+      const teamCandidates = pools[position].slice(start, start + count);
+
+      teamCandidates.forEach((candidate) => {
+        players.push({
+          id: `${team.id}-player-${playerNumber}`,
+          ...candidate,
+          teamId: team.id,
+          isStarter: false,
+        });
+        playerNumber += 1;
+      });
+    });
+  });
+
+  return players;
+}
+
+function createAge(): number {
+  const roll = Math.random();
+
+  if (roll < 0.15) {
+    return randomInt(18, 20);
+  }
+
+  if (roll < 0.45) {
+    return randomInt(21, 24);
+  }
+
+  if (roll < 0.8) {
+    return randomInt(25, 29);
+  }
+
+  if (roll < 0.95) {
+    return randomInt(30, 32);
+  }
+
+  return randomInt(33, 36);
+}
+
+function createPotentialGap(age: number): number {
+  if (age <= 20) {
+    return randomInt(12, 32);
+  }
+
+  if (age <= 24) {
+    return randomInt(6, 22);
+  }
+
+  if (age <= 29) {
+    return randomInt(0, 12);
+  }
+
+  if (age <= 32) {
+    return randomInt(0, 6);
+  }
+
+  return randomInt(0, 3);
+}
+
+function averageOverall(players: Player[], teams: Team[]): number {
+  const teamIds = new Set(teams.map((team) => team.id));
+  const leaguePlayers = players.filter((player) => teamIds.has(player.teamId));
+
+  return leaguePlayers.reduce((total, player) => total + player.overall, 0) / leaguePlayers.length;
+}
+
+function teamStrengthRank(team: Team): number {
+  const parts = team.id.split('-');
+  return Number(parts[parts.length - 1] ?? 0);
+}
+
+function byOverallDesc(a: PlayerCandidate, b: PlayerCandidate): number {
+  return b.overall - a.overall || b.potential - a.potential;
+}
+
+function shuffle<T>(items: T[]): T[] {
+  const nextItems = [...items];
+
+  for (let index = nextItems.length - 1; index > 0; index -= 1) {
+    const swapIndex = randomInt(0, index);
+    [nextItems[index], nextItems[swapIndex]] = [nextItems[swapIndex], nextItems[index]];
+  }
+
+  return nextItems;
+}
+
+function randomInt(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }
