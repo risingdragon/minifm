@@ -47,7 +47,15 @@ export function App() {
   }
 
   function handleSimulateRound(): void {
-    const result = simulateRound(userLeague.currentRound, game.matches, game.teams, game.players, game.leagueSystem.season, userTeam.id);
+    const result = simulateRound(
+      userLeague.currentRound,
+      game.matches,
+      game.teams,
+      game.players,
+      game.seasonHomeIncomeByLeague,
+      game.leagueSystem.season,
+      userTeam.id,
+    );
     setGame({
       ...game,
       teams: result.teams,

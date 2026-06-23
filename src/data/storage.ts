@@ -48,6 +48,7 @@ function isCompatibleSave(state: GameState): boolean {
     Boolean(state.leagueSystem) &&
     Boolean(state.userTeamId) &&
     Boolean(state.transferMarket) &&
+    state.seasonHomeIncomeByLeague &&
     Array.isArray(state.financeLogs) &&
     Array.isArray(state.players) &&
     Array.isArray(state.teams) &&

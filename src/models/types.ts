@@ -113,6 +113,7 @@ export interface GameState {
   userTeamId: string;
   transferMarket: TransferMarket;
   financeLogs: FinanceLog[];
+  seasonHomeIncomeByLeague: Record<string, number>;
   lastFinanceSummary?: FinanceSummary;
   lastGrowthChanges?: PlayerGrowthChange[];
   seasonGrowthChanges?: PlayerGrowthChange[];

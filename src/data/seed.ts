@@ -1,7 +1,7 @@
 import type { GameState, League, Match, Player, Position, Team } from '../models/types';
 import { createDoubleRoundRobinSchedule } from '../game/schedule';
 import { selectLineupForAllTeams } from '../game/lineup';
-import { calculateMarketValue, calculateWeeklyWage } from '../game/finance';
+import { calculateMarketValue, calculateSeasonHomeIncomeByLeague, calculateWeeklyWage } from '../game/finance';
 import { createTransferMarket } from '../game/transfer';
 
 const LEAGUE_DEFINITIONS = [
@@ -115,6 +115,7 @@ export function createNewGame(): GameState {
   const { leaguesWithSchedule, matches } = createSchedules(leagues, teamsWithPlayers);
   const playersWithLineups = selectLineupForAllTeams(teamsWithPlayers, players);
   const transferMarket = createTransferMarket(playersWithLineups, userTeam.id, '1', 1);
+  const seasonHomeIncomeByLeague = calculateSeasonHomeIncomeByLeague(teamsWithPlayers, playersWithLineups);
 
   return {
     leagueSystem: {
@@ -132,6 +133,7 @@ export function createNewGame(): GameState {
     userTeamId: userTeam.id,
     transferMarket,
     financeLogs: [],
+    seasonHomeIncomeByLeague,
     lastFinanceSummary: { ticketIncome: 0, wageExpense: 0, net: 0 },
     lastGrowthChanges: [],
     seasonGrowthChanges: [],
@@ -233,7 +235,7 @@ function createPlayerCandidate(position: Position, minOverall: number, maxOveral
     overall,
     potential,
     marketValue,
-    weeklyWage: calculateWeeklyWage(marketValue),
+    weeklyWage: calculateWeeklyWage({ overall }),
     contractYears: randomInt(1, 5),
     isListed: Math.random() < 0.25,
   };

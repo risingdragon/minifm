@@ -1,4 +1,5 @@
 import { createLeagues, createSchedules } from '../data/seed';
+import { calculateSeasonHomeIncomeByLeague } from './finance';
 import type { GameState, Team } from '../models/types';
 import { agePlayersForNewSeason } from './growth';
 import { selectLineupForAllTeams } from './lineup';
@@ -42,6 +43,7 @@ export function createNextSeasonGame(game: GameState): GameState {
   const nextLeagues = createLeagues(nextSeason);
   const { leaguesWithSchedule, matches } = createSchedules(nextLeagues, nextTeams);
   const nextPlayers = selectLineupForAllTeams(nextTeams, agePlayersForNewSeason(game.players));
+  const seasonHomeIncomeByLeague = calculateSeasonHomeIncomeByLeague(nextTeams, nextPlayers);
 
   return {
       ...game,
@@ -55,6 +57,7 @@ export function createNextSeasonGame(game: GameState): GameState {
       players: nextPlayers,
       matches,
       transferMarket: createTransferMarket(nextPlayers, game.userTeamId, nextSeason, 1),
+      seasonHomeIncomeByLeague,
       lastFinanceSummary: { ticketIncome: 0, wageExpense: 0, net: 0 },
       lastGrowthChanges: [],
       seasonGrowthChanges: [],

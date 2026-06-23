@@ -184,7 +184,7 @@ marketValue = calculateMarketValue(age, overall, potential)
 周薪：
 
 ```text
-weeklyWage = calculateWeeklyWage(marketValue)
+weeklyWage = calculateWeeklyWage(overall)
 ```
 
 合同：
@@ -237,7 +237,7 @@ isListed = randomChance(20%-30%)
 - 所有常规球员 `potential >= overall`
 - 所有常规球员 `potential <= 200`
 - 所有常规球员 `marketValue >= 1000`
-- 所有常规球员 `weeklyWage >= 100`
+- 所有常规球员 `weeklyWage >= 1000`
 - 所有常规球员 `contractYears` 在 1-5 年之间
 - 一级联赛球员平均 `overall` 高于二级联赛
 - 一级联赛球队平均 `balance` 高于二级联赛

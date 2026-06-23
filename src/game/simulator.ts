@@ -3,7 +3,15 @@ import { settleMatchFinances } from './finance';
 import { settleGrowthAfterMatch } from './growth';
 import { getStarters, selectAutoLineup } from './lineup';
 
-export function simulateRound(round: number, matches: Match[], teams: Team[], players: Player[], season = '1', userTeamId?: string): {
+export function simulateRound(
+  round: number,
+  matches: Match[],
+  teams: Team[],
+  players: Player[],
+  seasonHomeIncomeByLeague: Record<string, number>,
+  season = '1',
+  userTeamId?: string,
+): {
   matches: Match[];
   teams: Team[];
   players: Player[];
@@ -57,6 +65,7 @@ export function simulateRound(round: number, matches: Match[], teams: Team[], pl
     matches: newlyPlayedMatches,
     teams: updatedTeams,
     players: updatedPlayers,
+    seasonHomeIncomeByLeague,
     season,
     round,
   });

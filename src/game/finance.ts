@@ -8,8 +8,9 @@ export function calculateMarketValue(player: Pick<Player, 'age' | 'overall' | 'p
   return Math.max(1000, Math.round((baseValue + potentialBonus) * ageModifier));
 }
 
-export function calculateWeeklyWage(marketValue: number): number {
-  return clamp(Math.round(marketValue * 0.002), 100, 200000);
+export function calculateWeeklyWage(player: Pick<Player, 'overall'>): number {
+  const abilityBand = Math.ceil(clamp(player.overall, 1, 200) / 10);
+  return abilityBand * 1000;
 }
 
 export function refreshPlayerFinance(player: Player): Player {
@@ -18,26 +19,34 @@ export function refreshPlayerFinance(player: Player): Player {
   return {
     ...player,
     marketValue,
-    weeklyWage: calculateWeeklyWage(marketValue),
+    weeklyWage: calculateWeeklyWage(player),
   };
+}
+
+export function calculateSeasonHomeIncomeByLeague(teams: Team[], players: Player[]): Record<string, number> {
+  const wageByTeam = calculateTeamWages(teams, players);
+  return Object.fromEntries(calculateLeagueHomeIncomes(teams, wageByTeam));
 }
 
 export function settleMatchFinances({
   matches,
   teams,
   players,
+  seasonHomeIncomeByLeague,
   season,
   round,
 }: {
   matches: Match[];
   teams: Team[];
   players: Player[];
+  seasonHomeIncomeByLeague: Record<string, number>;
   season: string;
   round: number;
 }): { teams: Team[]; logs: FinanceLog[]; summaryByTeam: Record<string, FinanceSummary> } {
   const teamDeltas = new Map<string, number>();
   const logs: FinanceLog[] = [];
   const summaryByTeam: Record<string, FinanceSummary> = {};
+  const wageByTeam = calculateTeamWages(teams, players);
 
   const addDelta = (teamId: string, amount: number, type: FinanceLog['type'], description: string) => {
     teamDeltas.set(teamId, (teamDeltas.get(teamId) ?? 0) + amount);
@@ -70,14 +79,12 @@ export function settleMatchFinances({
       return;
     }
 
-    const ticketIncome = calculateTicketIncome(homeTeam);
+    const ticketIncome = seasonHomeIncomeByLeague[homeTeam.leagueId] ?? 0;
     addDelta(homeTeam.id, ticketIncome, 'ticketIncome', `${homeTeam.name} home ticket income`);
   });
 
   teams.forEach((team) => {
-    const wageExpense = players
-      .filter((player) => player.teamId === team.id)
-      .reduce((total, player) => total + player.weeklyWage, 0);
+    const wageExpense = wageByTeam.get(team.id) ?? 0;
 
     addDelta(team.id, -wageExpense, 'wageExpense', `${team.name} weekly wages`);
   });
@@ -92,10 +99,27 @@ export function settleMatchFinances({
   };
 }
 
-function calculateTicketIncome(team: Team): number {
-  const attendanceRate = clamp(0.45 + team.fanBase / 200, 0.35, 1);
-  const attendance = Math.round(team.stadiumCapacity * attendanceRate);
-  return attendance * team.ticketPrice;
+function calculateTeamWages(teams: Team[], players: Player[]): Map<string, number> {
+  const wages = new Map(teams.map((team) => [team.id, 0]));
+
+  players.forEach((player) => {
+    wages.set(player.teamId, (wages.get(player.teamId) ?? 0) + player.weeklyWage);
+  });
+
+  return wages;
+}
+
+function calculateLeagueHomeIncomes(teams: Team[], wageByTeam: Map<string, number>): Map<string, number> {
+  const maxWageByLeague = new Map<string, number>();
+
+  teams.forEach((team) => {
+    const teamWage = wageByTeam.get(team.id) ?? 0;
+    maxWageByLeague.set(team.leagueId, Math.max(maxWageByLeague.get(team.leagueId) ?? 0, teamWage));
+  });
+
+  return new Map(
+    Array.from(maxWageByLeague.entries()).map(([leagueId, maxWage]) => [leagueId, Math.round(maxWage * 2.5)]),
+  );
 }
 
 function clamp(value: number, min: number, max: number): number {

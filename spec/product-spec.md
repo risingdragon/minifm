@@ -250,6 +250,7 @@ MVP 主客场双循环 38 轮。
 - `userTeamId`: 玩家控制球队 ID
 - `transferMarket`: 当前转会市场状态
 - `financeLogs`: 财政流水，可记录门票收入、工资支出、转会支出与收入
+- `seasonHomeIncomeByLeague`: 本赛季每个联赛锁定的单场主场收入
 
 新游戏初始化规则：
 
@@ -260,6 +261,7 @@ MVP 主客场双循环 38 轮。
 5. 分别为每级联赛生成 38 轮赛程
 6. 为每名球员生成身价、周薪与合同年限
 7. 为每支球队生成初始现金余额、球场容量、票价与球迷基础
+8. 按赛季初工资总额计算并锁定 `seasonHomeIncomeByLeague`
 
 ### 6.8 TransferMarket
 
@@ -473,13 +475,16 @@ marketValue = round((baseValue + potentialBonus) * ageModifier)
 建议公式：
 
 ```text
-weeklyWage = round(marketValue * 0.002)
-weeklyWage = clamp(weeklyWage, 100, 200000)
+abilityBand = ceil(clamp(overall, 1, 200) / 10)
+weeklyWage = abilityBand * 1000
 ```
 
 发放规则：
 
 - 每场比赛模拟完成后，每支球队支付本队全部常规球员周薪
+- 能力 1-10 的最低档球员周薪为 1000
+- 能力段越高，周薪越高
+- 周薪由当前能力档决定，不直接由身价决定
 - 工资支出从球队 `balance` 中扣除
 - 若球队余额为负，MVP 允许继续比赛，但余额展示为负数
 - 工资支出写入 `financeLogs`
@@ -495,25 +500,29 @@ weeklyWage = clamp(weeklyWage, 100, 200000)
 - MVP 中合同到期不会自动离队，最低显示为 0
 - 第一版不做续约谈判、合同奖金、解约金
 
-#### 7.7.4 门票收入
+#### 7.7.4 主场收入
 
-门票收入在主场比赛结束后结算。
+主场收入在赛季初计算并锁定，之后在主场比赛结束后发放。MVP 先用赛季初联赛工资水平反推收入，保证收入能覆盖支出。
 
 建议公式：
 
 ```text
-attendanceRate = clamp(0.45 + fanBase / 200 + teamFormBonus, 0.35, 1.0)
-attendance = round(stadiumCapacity * attendanceRate)
-ticketIncome = attendance * ticketPrice
+teamWeeklyWage = sum(team.players.weeklyWage)
+leagueMaxWeeklyWage = max(league.teams.teamWeeklyWage)
+homeIncome = round(leagueMaxWeeklyWage * 2.5)
 ```
 
 简化规则：
 
-- `fanBase` 范围为 1-100
-- `teamFormBonus` MVP 可先设为 0，后续可根据排名和连胜调整
-- 每场比赛只给主队发放门票收入
-- 门票收入加入球队 `balance`
-- 门票收入写入 `financeLogs`
+- 每个赛季开始时，每个联赛独立计算一次 `leagueMaxWeeklyWage`
+- 一级联赛最高工资队决定一级联赛单场主场收入
+- 二级联赛最高工资队决定二级联赛单场主场收入
+- 计算结果保存为 `seasonHomeIncomeByLeague`
+- 同一赛季内主场收入不随成长、衰退、转会或工资变化重新计算
+- 每场比赛只给主队发放其所在联赛的主场收入
+- 主场收入加入球队 `balance`
+- 主场收入写入 `financeLogs`，类型仍使用 `ticketIncome`
+- `stadiumCapacity`、`ticketPrice`、`fanBase` 暂时作为后续扩展参数保留
 
 #### 7.7.5 转会市场
 
