@@ -1,6 +1,6 @@
 import type { FinanceLog, GameState, Player, Team, TransferMarket } from '../models/types';
 
-const MARKET_SIZE = 24;
+const MARKET_SIZE = 39;
 export const MAX_REGULAR_PLAYERS_PER_TEAM = 25;
 export const MIN_REGULAR_PLAYERS_PER_TEAM = 11;
 
@@ -150,13 +150,31 @@ export function countRegularPlayers(players: Player[], teamId: string): number {
 }
 
 function selectListedPlayers(players: Player[], userTeamId: string): string[] {
-  return players
-    .filter((player) => player.teamId !== userTeamId && !player.isStarter)
-    .sort((a, b) => marketScore(b) - marketScore(a))
+  const playersByTeam = players.reduce<Record<string, Player[]>>((groups, player) => {
+    if (player.teamId === userTeamId) {
+      return groups;
+    }
+
+    groups[player.teamId] = [...(groups[player.teamId] ?? []), player];
+    return groups;
+  }, {});
+
+  return Object.values(playersByTeam)
+    .filter((teamPlayers) => teamPlayers.length > MIN_REGULAR_PLAYERS_PER_TEAM)
+    .map((teamPlayers) => teamPlayers.slice().sort(compareLeastNeeded)[0])
+    .filter((player): player is Player => Boolean(player))
     .slice(0, MARKET_SIZE)
     .map((player) => player.id);
 }
 
-function marketScore(player: Player): number {
-  return player.overall * 2 + player.potential + (player.id.charCodeAt(player.id.length - 1) % 17);
+function compareLeastNeeded(a: Player, b: Player): number {
+  if (a.isStarter !== b.isStarter) {
+    return a.isStarter ? 1 : -1;
+  }
+
+  return leastNeededScore(a) - leastNeededScore(b) || a.name.localeCompare(b.name, 'zh-CN');
+}
+
+function leastNeededScore(player: Player): number {
+  return player.overall * 3 + player.potential + player.marketValue / 10000;
 }
