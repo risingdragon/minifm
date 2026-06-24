@@ -117,6 +117,8 @@ export interface GameState {
   lastFinanceSummary?: FinanceSummary;
   lastGrowthChanges?: PlayerGrowthChange[];
   seasonGrowthChanges?: PlayerGrowthChange[];
+  lastRetiredPlayerIds?: string[];
+  lastYouthPlayerIds?: string[];
 }
 
 export type View = 'dashboard' | 'squad' | 'match' | 'standings' | 'transfers' | 'seasonEnd';

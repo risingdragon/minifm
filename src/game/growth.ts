@@ -44,11 +44,13 @@ export function settleGrowthAfterMatch(players: Player[]): {
 export function agePlayersForNewSeason(players: Player[]): Player[] {
   return players.map((player) => {
     const normalized = normalizePlayer(player);
+    const nextAge = normalized.age + 1;
+    const maxContractYears = getMaxContractYears(nextAge);
 
     return refreshPlayerFinance({
       ...normalized,
-      age: normalized.age + 1,
-      contractYears: Math.max(0, normalized.contractYears - 1),
+      age: nextAge,
+      contractYears: Math.min(maxContractYears, Math.max(0, normalized.contractYears - 1)),
     });
   });
 }
@@ -84,6 +86,10 @@ function getAbilityDelta(player: Player): number {
 function inferPotential(player: Player): number {
   const ageBonus = player.age <= 20 ? 22 : player.age <= 25 ? 14 : player.age <= 30 ? 7 : 0;
   return Math.min(200, player.overall + ageBonus);
+}
+
+function getMaxContractYears(age: number): number {
+  return Math.min(5, Math.max(0, 36 - age));
 }
 
 function weightedRandom(entries: Array<[number, number]>): number {

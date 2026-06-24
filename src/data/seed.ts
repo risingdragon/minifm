@@ -65,6 +65,10 @@ const POSITION_COUNTS: Record<Position, number> = {
   FW: 5,
 };
 
+export const REGULAR_PLAYERS_PER_TEAM = 25;
+export const RETIREMENT_AGE = 36;
+export const RECOMMENDED_POSITION_COUNTS = POSITION_COUNTS;
+
 const ABILITY_BANDS = [
   { min: 191, max: 200, count: 1 },
   { min: 181, max: 190, count: 3 },
@@ -137,6 +141,8 @@ export function createNewGame(): GameState {
     lastFinanceSummary: { ticketIncome: 0, wageExpense: 0, net: 0 },
     lastGrowthChanges: [],
     seasonGrowthChanges: [],
+    lastRetiredPlayerIds: [],
+    lastYouthPlayerIds: [],
   };
 }
 
@@ -236,8 +242,31 @@ function createPlayerCandidate(position: Position, minOverall: number, maxOveral
     potential,
     marketValue,
     weeklyWage: calculateWeeklyWage({ overall }),
-    contractYears: randomInt(1, 5),
+    contractYears: createContractYears(age),
     isListed: Math.random() < 0.25,
+  };
+}
+
+export function createYouthPlayer(teamId: string, position: Position, index: number, season: string): Player {
+  const age = 16;
+  const overall = randomInt(20, 55);
+  const potential = clamp(overall + randomInt(25, 70), overall, 200);
+  const marketValue = calculateMarketValue({ age, overall, potential });
+  const nameIndex = randomInt(0, surnames.length * givenNames.length - 1);
+
+  return {
+    id: `${teamId}-youth-${season}-${index}`,
+    name: `${surnames[nameIndex % surnames.length]}${givenNames[Math.floor(nameIndex / surnames.length) % givenNames.length]}`,
+    age,
+    position,
+    teamId,
+    overall,
+    potential,
+    marketValue,
+    weeklyWage: calculateWeeklyWage({ overall }),
+    contractYears: Math.min(randomInt(2, 5), getMaxContractYears(age)),
+    isListed: false,
+    isStarter: false,
   };
 }
 
@@ -336,7 +365,7 @@ function createAge(): number {
     return randomInt(30, 32);
   }
 
-  return randomInt(33, 36);
+  return randomInt(33, 35);
 }
 
 function createPotentialGap(age: number): number {
@@ -388,6 +417,18 @@ function shuffle<T>(items: T[]): T[] {
 
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+export function getMaxContractYears(age: number): number {
+  return clamp(RETIREMENT_AGE - age, 0, 5);
+}
+
+function createContractYears(age: number): number {
+  const maxContractYears = getMaxContractYears(age);
+  if (maxContractYears <= 0) {
+    return 0;
+  }
+  return randomInt(1, maxContractYears);
 }
 
 function clamp(value: number, min: number, max: number): number {

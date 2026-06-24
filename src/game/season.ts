@@ -1,6 +1,6 @@
-import { createLeagues, createSchedules } from '../data/seed';
+import { createLeagues, createSchedules, createYouthPlayer, RECOMMENDED_POSITION_COUNTS, REGULAR_PLAYERS_PER_TEAM, RETIREMENT_AGE } from '../data/seed';
 import { calculateSeasonHomeIncomeByLeague } from './finance';
-import type { GameState, Team } from '../models/types';
+import type { GameState, Player, Position, Team } from '../models/types';
 import { agePlayersForNewSeason } from './growth';
 import { selectLineupForAllTeams } from './lineup';
 import { calculateStandings } from './standings';
@@ -29,21 +29,28 @@ export function createNextSeasonGame(game: GameState): GameState {
   const topLeague = getLeagueByLevel(game, 1);
   const lowerLeague = getLeagueByLevel(game, game.leagueSystem.lowestLevel);
   const nextSeason = String(parseInt(game.leagueSystem.season, 10) + 1);
-  const nextTeams = game.teams.map((team) => {
-    if (movement.promoted.some((promoted) => promoted.id === team.id)) {
+  const promotedIds = new Set(movement.promoted.map((team) => team.id));
+  const relegatedIds = new Set(movement.relegated.map((team) => team.id));
+  const movedTeams = game.teams.map((team) => {
+    if (promotedIds.has(team.id)) {
       return { ...team, leagueId: topLeague.id };
     }
 
-    if (movement.relegated.some((relegated) => relegated.id === team.id)) {
+    if (relegatedIds.has(team.id)) {
       return { ...team, leagueId: lowerLeague.id };
     }
 
     return team;
   });
+  const agedPlayers = agePlayersForNewSeason(game.players.filter((player) => !player.isGeneratedFillIn));
+  const retiredPlayerIds = agedPlayers.filter((player) => player.age >= RETIREMENT_AGE).map((player) => player.id);
+  const activePlayers = agedPlayers.filter((player) => player.age < RETIREMENT_AGE);
+  const teamsAfterRetirement = syncTeamRosters(movedTeams, activePlayers);
+  const youthResult = fillYouthPlayers(teamsAfterRetirement, activePlayers, nextSeason);
   const nextLeagues = createLeagues(nextSeason);
-  const { leaguesWithSchedule, matches } = createSchedules(nextLeagues, nextTeams);
-  const nextPlayers = selectLineupForAllTeams(nextTeams, agePlayersForNewSeason(game.players));
-  const seasonHomeIncomeByLeague = calculateSeasonHomeIncomeByLeague(nextTeams, nextPlayers);
+  const { leaguesWithSchedule, matches } = createSchedules(nextLeagues, youthResult.teams);
+  const nextPlayers = selectLineupForAllTeams(youthResult.teams, youthResult.players);
+  const seasonHomeIncomeByLeague = calculateSeasonHomeIncomeByLeague(youthResult.teams, nextPlayers);
 
   return {
       ...game,
@@ -53,7 +60,7 @@ export function createNextSeasonGame(game: GameState): GameState {
         leagueIds: leaguesWithSchedule.map((league) => league.id),
       },
       leagues: leaguesWithSchedule,
-      teams: nextTeams,
+      teams: youthResult.teams,
       players: nextPlayers,
       matches,
       transferMarket: createTransferMarket(nextPlayers, game.userTeamId, nextSeason, 1),
@@ -61,7 +68,62 @@ export function createNextSeasonGame(game: GameState): GameState {
       lastFinanceSummary: { ticketIncome: 0, wageExpense: 0, net: 0 },
       lastGrowthChanges: [],
       seasonGrowthChanges: [],
+      lastRetiredPlayerIds: retiredPlayerIds,
+      lastYouthPlayerIds: youthResult.youthPlayerIds,
     };
+}
+
+function syncTeamRosters(teams: Team[], players: Player[]): Team[] {
+  const activePlayerIds = new Set(players.map((player) => player.id));
+  return teams.map((team) => ({
+    ...team,
+    players: team.players.filter((playerId) => activePlayerIds.has(playerId)),
+  }));
+}
+
+function fillYouthPlayers(teams: Team[], players: Player[], season: string): { teams: Team[]; players: Player[]; youthPlayerIds: string[] } {
+  const nextPlayers = [...players];
+  const youthPlayerIds: string[] = [];
+  const nextTeams = teams.map((team) => {
+    const teamPlayers = nextPlayers.filter((player) => player.teamId === team.id && !player.isGeneratedFillIn);
+    const youthPlayers: Player[] = [];
+
+    while (teamPlayers.length + youthPlayers.length < REGULAR_PLAYERS_PER_TEAM) {
+      const position = chooseYouthPosition([...teamPlayers, ...youthPlayers]);
+      const youthPlayer = createYouthPlayer(team.id, position, youthPlayers.length + 1, season);
+      youthPlayers.push(youthPlayer);
+      nextPlayers.push(youthPlayer);
+      youthPlayerIds.push(youthPlayer.id);
+    }
+
+    return {
+      ...team,
+      players: [...team.players, ...youthPlayers.map((player) => player.id)],
+    };
+  });
+
+  return { teams: nextTeams, players: nextPlayers, youthPlayerIds };
+}
+
+function chooseYouthPosition(players: Player[]): Position {
+  const counts = countPositions(players);
+  const positions = Object.keys(RECOMMENDED_POSITION_COUNTS) as Position[];
+  const neededPosition = positions.find((position) => counts[position] < RECOMMENDED_POSITION_COUNTS[position]);
+
+  if (neededPosition) {
+    return neededPosition;
+  }
+
+  return positions.slice().sort((a, b) => counts[a] - counts[b])[0];
+}
+
+function countPositions(players: Player[]): Record<Position, number> {
+  return {
+    GK: players.filter((player) => player.position === 'GK').length,
+    DF: players.filter((player) => player.position === 'DF').length,
+    MF: players.filter((player) => player.position === 'MF').length,
+    FW: players.filter((player) => player.position === 'FW').length,
+  };
 }
 
 function getLeagueByLevel(game: GameState, level: number) {
