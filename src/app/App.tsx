@@ -139,7 +139,7 @@ export function App() {
           <NavButton label="比赛" active={view === 'match'} onClick={() => setView('match')} />
           <NavButton label="积分榜" active={view === 'standings'} onClick={() => setView('standings')} />
           <NavButton label="转会" active={view === 'transfers'} onClick={() => setView('transfers')} />
-          
+
         </nav>
 
         <button className="continue-button" type="button" onClick={handleContinue}>
@@ -238,6 +238,9 @@ function DashboardPage({
   const opponentId = userMatch?.homeTeamId === userTeam.id ? userMatch.awayTeamId : userMatch?.homeTeamId;
   const opponent = game.teams.find((team) => team.id === opponentId);
   const lineupWarnings = detectLineupWarnings(userTeam, game.players);
+  const promotedYouthPlayers = (game.lastYouthPlayerIds ?? [])
+    .map((playerId) => game.players.find((player) => player.id === playerId && player.teamId === userTeam.id))
+    .filter((player): player is Player => Boolean(player));
 
   return (
     <>
@@ -252,6 +255,24 @@ function DashboardPage({
         </div>
         <img className="jersey-art" src={jerseyImage} alt="" />
       </header>
+
+      {promotedYouthPlayers.length > 0 && (
+        <section className="growth-panel">
+          <div>
+            <span className="eyebrow">新赛季提拔</span>
+            <h2>16 岁新秀加入一线队</h2>
+          </div>
+          <div className="growth-list">
+            {promotedYouthPlayers.map((player) => (
+              <div className="growth-item" key={player.id}>
+                <span>{player.name}</span>
+                <strong>{player.position}</strong>
+                <small>能力 {player.overall} · 潜力 {player.potential}</small>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {lineupWarnings.length > 0 && (
         <section className="warning-band">
@@ -775,6 +796,9 @@ function SeasonEndPage({
   const aggregatedChanges = aggregateGrowthChanges(seasonGrowthChanges).filter((change) => userTeamPlayerIds.has(change.playerId));
   const topGrowth = aggregatedChanges.filter((change) => change.delta > 0).sort((a, b) => b.delta - a.delta).slice(0, 3);
   const topDecline = aggregatedChanges.filter((change) => change.delta < 0).sort((a, b) => a.delta - b.delta).slice(0, 3);
+  const retiringPlayers = game.players
+    .filter((player) => player.teamId === userTeam.id && !player.isGeneratedFillIn && player.age + 1 >= 36)
+    .sort((a, b) => b.overall - a.overall);
 
   return (
     <>
@@ -810,7 +834,36 @@ function SeasonEndPage({
           <SeasonGrowthList title="衰退最大" changes={topDecline} players={game.players} />
         </div>
       </section>
+
+      <section className="growth-panel">
+        <div>
+          <span className="eyebrow">阵容变化</span>
+          <h2>退役球员</h2>
+        </div>
+        <RetiringPlayerList players={retiringPlayers} />
+      </section>
     </>
+  );
+}
+
+function RetiringPlayerList({ players }: { players: Player[] }) {
+  return (
+    <div className="growth-summary-section">
+      <h3>即将退役</h3>
+      {players.length === 0 ? (
+        <p className="muted">本赛季无球员退役。</p>
+      ) : (
+        <div className="growth-list">
+          {players.map((player) => (
+            <div className="growth-item" key={player.id}>
+              <span>{player.name}</span>
+              <strong>{player.position}</strong>
+              <small>{player.age} 岁 · 能力 {player.overall}</small>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
