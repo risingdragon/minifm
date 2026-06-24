@@ -5,8 +5,8 @@ import { calculateMarketValue, calculateSeasonHomeIncomeByLeague, calculateWeekl
 import { createTransferMarket } from '../game/transfer';
 
 const LEAGUE_DEFINITIONS = [
-  { id: 'league-1', name: 'miniFM 一级联赛', level: 1 },
-  { id: 'league-2', name: 'miniFM 二级联赛', level: 2 },
+  { id: 'league-1', name: '一级联赛', level: 1 },
+  { id: 'league-2', name: '二级联赛', level: 2 },
 ] as const;
 
 const topTeamNames = [

@@ -128,7 +128,7 @@ export function App() {
         <div className="brand">
           <div className="brand-mark">mF</div>
           <div>
-            <strong>miniFM</strong>
+            <strong>迷你足球经理</strong>
             <span>第 {game.leagueSystem.season} 赛季</span>
           </div>
         </div>
