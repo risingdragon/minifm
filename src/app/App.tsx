@@ -241,6 +241,10 @@ function DashboardPage({
   const promotedYouthPlayers = (game.lastYouthPlayerIds ?? [])
     .map((playerId) => game.players.find((player) => player.id === playerId && player.teamId === userTeam.id))
     .filter((player): player is Player => Boolean(player));
+  const showYouthPromotion =
+    promotedYouthPlayers.length > 0 &&
+    game.leagues.every((league) => league.currentRound === 1) &&
+    game.matches.filter((match) => match.round === 1).every((match) => match.status === 'scheduled');
 
   return (
     <>
@@ -256,7 +260,7 @@ function DashboardPage({
         <img className="jersey-art" src={jerseyImage} alt="" />
       </header>
 
-      {promotedYouthPlayers.length > 0 && (
+      {showYouthPromotion && (
         <section className="growth-panel">
           <div>
             <span className="eyebrow">新赛季提拔</span>
@@ -797,7 +801,7 @@ function SeasonEndPage({
   const topGrowth = aggregatedChanges.filter((change) => change.delta > 0).sort((a, b) => b.delta - a.delta).slice(0, 3);
   const topDecline = aggregatedChanges.filter((change) => change.delta < 0).sort((a, b) => a.delta - b.delta).slice(0, 3);
   const retiringPlayers = game.players
-    .filter((player) => player.teamId === userTeam.id && !player.isGeneratedFillIn && player.age + 1 >= 36)
+    .filter((player) => player.teamId === userTeam.id && player.age + 1 >= 36)
     .sort((a, b) => b.overall - a.overall);
 
   return (

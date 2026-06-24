@@ -15,11 +15,12 @@ export function selectAutoLineup(team: Team, players: Player[]): Player[] {
   const existingPlayerIds = new Set(teamPlayers.map((player) => player.id));
 
   const selected: Player[] = [];
+  const fillInPlayers: Player[] = [];
 
   (Object.keys(FORMATION) as Position[]).forEach((position) => {
     const candidates = teamPlayers
       .filter((player) => player.position === position && !selected.some((starter) => starter.id === player.id))
-      .sort((a, b) => b.overall - a.overall);
+      .sort(compareLineupPriority);
 
     selected.push(...candidates.slice(0, FORMATION[position]));
   });
@@ -28,7 +29,7 @@ export function selectAutoLineup(team: Team, players: Player[]): Player[] {
   if (remainingSlots > 0) {
     const backups = teamPlayers
       .filter((player) => !selected.some((starter) => starter.id === player.id))
-      .sort((a, b) => b.overall - a.overall)
+      .sort(compareLineupPriority)
       .slice(0, remainingSlots);
     selected.push(...backups);
   }
@@ -45,7 +46,7 @@ export function selectAutoLineup(team: Team, players: Player[]): Player[] {
     const overall = 1;
     const potential = 1 + randomInt(12, 32);
     const marketValue = calculateMarketValue({ age, overall, potential });
-    selected.push({
+    const fillInPlayer: Player = {
       id: `${team.id}-fill-${fillInIndex}`,
       name: `填充球员 ${fillInIndex}`,
       age,
@@ -58,8 +59,9 @@ export function selectAutoLineup(team: Team, players: Player[]): Player[] {
       contractYears: randomInt(1, 5),
       isListed: Math.random() < 0.25,
       isStarter: true,
-      isGeneratedFillIn: true,
-    });
+    };
+    selected.push(fillInPlayer);
+    fillInPlayers.push(fillInPlayer);
   }
 
   return teamPlayers
@@ -67,7 +69,7 @@ export function selectAutoLineup(team: Team, players: Player[]): Player[] {
       ...player,
       isStarter: selected.some((starter) => starter.id === player.id),
     }))
-    .concat(selected.filter((player) => player.isGeneratedFillIn && !existingPlayerIds.has(player.id)));
+    .concat(fillInPlayers.filter((player) => !existingPlayerIds.has(player.id)));
 }
 
 export function selectLineupForAllTeams(teams: Team[], players: Player[]): Player[] {
@@ -77,7 +79,7 @@ export function selectLineupForAllTeams(teams: Team[], players: Player[]): Playe
 export function getStarters(teamId: string, players: Player[]): Player[] {
   return players
     .filter((player) => player.teamId === teamId && player.isStarter)
-    .sort((a, b) => positionOrder(a.position) - positionOrder(b.position) || b.overall - a.overall)
+    .sort((a, b) => positionOrder(a.position) - positionOrder(b.position) || compareLineupPriority(a, b))
     .slice(0, 11);
 }
 
@@ -99,15 +101,15 @@ export function detectLineupWarnings(team: Team, players: Player[]): LineupWarni
   (Object.keys(FORMATION) as Position[]).forEach((position) => {
     const positionStarters = starters
       .filter((player) => player.position === position)
-      .sort((a, b) => a.overall - b.overall);
+      .sort((a, b) => -compareLineupPriority(a, b));
 
     const positionSubstitutes = substitutes
       .filter((player) => player.position === position)
-      .sort((a, b) => b.overall - a.overall);
+      .sort(compareLineupPriority);
 
     for (const substitute of positionSubstitutes) {
       for (const starter of positionStarters) {
-        if (substitute.overall > starter.overall) {
+        if (compareLineupPriority(substitute, starter) < 0) {
           warnings.push({
             substitute,
             starter,
@@ -124,6 +126,10 @@ export function detectLineupWarnings(team: Team, players: Player[]): LineupWarni
 
 function positionOrder(position: Position): number {
   return ['GK', 'DF', 'MF', 'FW'].indexOf(position);
+}
+
+function compareLineupPriority(a: Player, b: Player): number {
+  return b.overall - a.overall || a.age - b.age || a.name.localeCompare(b.name, 'zh-CN');
 }
 
 function randomInt(min: number, max: number): number {

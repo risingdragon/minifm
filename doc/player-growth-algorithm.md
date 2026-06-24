@@ -14,7 +14,7 @@
 
 ## 算法流程
 
-每场比赛结束后，对所有非填充球员执行以下步骤：
+每场比赛结束后，对所有球员执行以下步骤：
 
 ```
 1. 归一化球员数据（确保 overall <= potential）
@@ -32,7 +32,6 @@
 | 21-25 | 成长期 | growthRoom > 0 时：20% +1，80% +0 |
 | 26-30 | 巅峰期 | growthRoom > 0 时：10% +1，90% +0 |
 | 31-35 | 后巅峰期 | 25% -1，75% +0 |
-| 36+ | 衰退期 | 50% -1，50% +0 |
 
 ## 详细算法实现
 
@@ -93,12 +92,12 @@ function weightedRandom(entries: Array<[number, number]>): number {
 
 ## 关键规则
 
-1. **填充球员跳过**：`isGeneratedFillIn = true` 的球员不参与成长结算
+1. **填充即普通球员**：填充动作生成的球员在创建后与其他球员没有区别，参与成长结算
 2. **潜力上限**：`overall` 在任何情况下都不能超过 `potential`
 3. **能力下限**：`overall` 最低为 1
 4. **满潜力处理**：当 `growthRoom = 0`（已达到潜力上限）时，新秀期、成长期、巅峰期球员保持不变（0）
 5. **重复结算防护**：同一球员同一轮最多结算 1 次
-6. **年龄增长时机**：赛季结束并开启新赛季时，所有常规球员 `age + 1`
+6. **年龄增长时机**：赛季结束并开启新赛季时，所有球员 `age + 1`
 
 ## 赛季年龄增长
 
@@ -106,9 +105,6 @@ function weightedRandom(entries: Array<[number, number]>): number {
 export function agePlayersForNewSeason(players: Player[]): Player[] {
   return players.map((player) => {
     const normalized = normalizePlayer(player);
-    if (normalized.isGeneratedFillIn) {
-      return normalized;
-    }
     return { ...normalized, age: normalized.age + 1 };
   });
 }

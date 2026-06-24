@@ -42,7 +42,7 @@ export function createNextSeasonGame(game: GameState): GameState {
 
     return team;
   });
-  const agedPlayers = agePlayersForNewSeason(game.players.filter((player) => !player.isGeneratedFillIn));
+  const agedPlayers = agePlayersForNewSeason(game.players);
   const retiredPlayerIds = agedPlayers.filter((player) => player.age >= RETIREMENT_AGE).map((player) => player.id);
   const activePlayers = agedPlayers.filter((player) => player.age < RETIREMENT_AGE);
   const teamsAfterRetirement = syncTeamRosters(movedTeams, activePlayers);
@@ -85,7 +85,7 @@ function fillYouthPlayers(teams: Team[], players: Player[], season: string): { t
   const nextPlayers = [...players];
   const youthPlayerIds: string[] = [];
   const nextTeams = teams.map((team) => {
-    const teamPlayers = nextPlayers.filter((player) => player.teamId === team.id && !player.isGeneratedFillIn);
+    const teamPlayers = nextPlayers.filter((player) => player.teamId === team.id);
     const youthPlayers: Player[] = [];
 
     while (teamPlayers.length + youthPlayers.length < REGULAR_PLAYERS_PER_TEAM) {

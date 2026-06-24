@@ -13,7 +13,6 @@ export interface Player {
   contractYears: number;
   isListed: boolean;
   isStarter: boolean;
-  isGeneratedFillIn?: boolean;
 }
 
 export interface PlayerGrowthChange {
