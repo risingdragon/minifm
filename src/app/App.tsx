@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import jerseyImage from '../../assets/lineup-jersey.png';
 import { resetGame, startNewSeason, loadGame, saveGame } from '../data/storage';
 import { selectAutoLineup, detectLineupWarnings } from '../game/lineup';
+import { calculateTeamAnnualWages, calculateWageHealthPercent, getLeagueAnnualRevenue } from '../game/finance';
 import { getSeasonMovement } from '../game/season';
 import { simulateRound } from '../game/simulator';
 import { calculateStandings } from '../game/standings';
 import { buyPlayer, countRegularPlayers, createTransferMarket, MAX_REGULAR_PLAYERS_PER_TEAM, MIN_REGULAR_PLAYERS_PER_TEAM, sellPlayer } from '../game/transfer';
-import type { GameState, League, Match, Player, PlayerGrowthChange, Position, Standing, Team, View } from '../models/types';
+import type { FinanceSummary, GameState, League, Match, Player, PlayerGrowthChange, Position, Standing, Team, View } from '../models/types';
 
 export function App() {
   const [game, setGame] = useState<GameState>(() => loadGame());
@@ -237,7 +238,16 @@ function DashboardPage({
   const rank = standings.findIndex((standing) => standing.teamId === userTeam.id) + 1;
   const opponentId = userMatch?.homeTeamId === userTeam.id ? userMatch.awayTeamId : userMatch?.homeTeamId;
   const opponent = game.teams.find((team) => team.id === opponentId);
+  const userPlayers = game.players.filter((player) => player.teamId === userTeam.id);
+  const annualRevenue = getLeagueAnnualRevenue(userLeague.level);
+  const annualWages = calculateTeamAnnualWages(userTeam.id, game.players);
+  const wageHealthPercent = calculateWageHealthPercent(userTeam, game.players);
+  const wageHealth = getWageHealthStatus(wageHealthPercent);
   const lineupWarnings = detectLineupWarnings(userTeam, game.players);
+  const retirementWarnings = userPlayers
+    .filter((player) => player.age >= 30)
+    .sort((a, b) => b.age - a.age || b.weeklyWage - a.weeklyWage)
+    .slice(0, 4);
   const promotedYouthPlayers = (game.lastYouthPlayerIds ?? [])
     .map((playerId) => game.players.find((player) => player.id === playerId && player.teamId === userTeam.id))
     .filter((player): player is Player => Boolean(player));
@@ -296,6 +306,23 @@ function DashboardPage({
         </section>
       )}
 
+      {retirementWarnings.length > 0 && (
+        <section className="warning-band retirement-band">
+          <div className="warning-header">
+            <span>35 岁退役预警</span>
+          </div>
+          <div className="warning-list">
+            {retirementWarnings.map((player) => (
+              <div key={player.id} className="warning-item">
+                <span className="warning-position">{player.age} 岁</span>
+                <span className="warning-substitute">{player.name}</span>
+                <span>{getRetirementMessage(player)}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <section className="summary-grid">
         <InfoPanel title="所在级别">
           <strong>{formatLeagueLevel(userLeague)}</strong>
@@ -306,6 +333,21 @@ function DashboardPage({
         <InfoPanel title="下一场">
           <strong>{opponent ? opponent.name : '赛季结束'}</strong>
           <span>{userMatch ? formatVenue(userMatch, userTeam.id) : '对手尚未确定'}</span>
+        </InfoPanel>
+      </section>
+
+      <section className="summary-grid">
+        <InfoPanel title="赛季营收">
+          <strong>{formatMoney(annualRevenue)}</strong>
+          <span>转播 + 赞助</span>
+        </InfoPanel>
+        <InfoPanel title="全队年薪">
+          <strong>{formatMoney(annualWages)}</strong>
+          <span>周薪 × 52</span>
+        </InfoPanel>
+        <InfoPanel title="薪资健康度">
+          <strong>{formatPercent(wageHealthPercent)}</strong>
+          <span className={wageHealth.className}>{wageHealth.label}</span>
         </InfoPanel>
       </section>
     </>
@@ -360,6 +402,7 @@ function SquadPage({
               <SortableHeader label="身价" sortKey="marketValue" sort={sort} onSort={handleSort} />
               <SortableHeader label="周薪" sortKey="weeklyWage" sort={sort} onSort={handleSort} />
               <SortableHeader label="合同" sortKey="contractYears" sort={sort} onSort={handleSort} />
+              <th>退役预警</th>
               <th>操作</th>
             </tr>
           </thead>
@@ -375,8 +418,9 @@ function SquadPage({
                   <td><strong>{player.overall}</strong></td>
                   <td>{player.potential}</td>
                   <td>{formatMoney(player.marketValue)}</td>
-                  <td>{formatMoney(player.weeklyWage)}</td>
+                  <td>{formatWeeklyWage(player.weeklyWage)}</td>
                   <td>{player.contractYears} 年</td>
+                  <td>{renderRetirementTag(player)}</td>
                   <td>
                     <button type="button" disabled={cannotSell} onClick={() => onSellPlayer(player.id)}>
                       卖出
@@ -493,7 +537,7 @@ function MatchPage({
 
       {roundComplete && (
         <>
-          <FinanceSummaryPanel summary={game.lastFinanceSummary ?? { ticketIncome: 0, wageExpense: 0, net: 0 }} />
+          <FinanceSummaryPanel summary={game.lastFinanceSummary ?? { revenueIncome: 0, wageExpense: 0, net: 0 }} />
           <GrowthSummary changes={game.lastGrowthChanges ?? []} players={userPlayers} />
         </>
       )}
@@ -565,6 +609,7 @@ function TransferMarketPage({ game, userTeam, onBuyPlayer }: { game: GameState; 
               <SortableHeader label="身价" sortKey="marketValue" sort={sort} onSort={handleSort} />
               <SortableHeader label="周薪" sortKey="weeklyWage" sort={sort} onSort={handleSort} />
               <SortableHeader label="合同" sortKey="contractYears" sort={sort} onSort={handleSort} />
+              <th>退役预警</th>
               <th>操作</th>
             </tr>
           </thead>
@@ -584,8 +629,9 @@ function TransferMarketPage({ game, userTeam, onBuyPlayer }: { game: GameState; 
                   <td>{player.overall}</td>
                   <td>{player.potential}</td>
                   <td>{formatMoney(player.marketValue)}</td>
-                  <td>{formatMoney(player.weeklyWage)}</td>
+                  <td>{formatWeeklyWage(player.weeklyWage)}</td>
                   <td>{player.contractYears} 年</td>
+                  <td>{renderRetirementTag(player)}</td>
                   <td>
                     <button type="button" disabled={cannotBuy} onClick={() => onBuyPlayer(player.id)}>购买</button>
                   </td>
@@ -927,7 +973,7 @@ function GrowthSummary({ changes, players }: { changes: PlayerGrowthChange[]; pl
   );
 }
 
-function FinanceSummaryPanel({ summary }: { summary: { ticketIncome: number; wageExpense: number; net: number } }) {
+function FinanceSummaryPanel({ summary }: { summary: FinanceSummary }) {
   return (
     <section className="finance-panel">
       <div>
@@ -935,7 +981,7 @@ function FinanceSummaryPanel({ summary }: { summary: { ticketIncome: number; wag
         <h2>本轮收支</h2>
       </div>
       <div className="finance-grid">
-        <InfoPanel title="门票收入"><strong>{formatMoney(summary.ticketIncome)}</strong></InfoPanel>
+        <InfoPanel title="联赛营收"><strong>{formatMoney(summary.revenueIncome)}</strong></InfoPanel>
         <InfoPanel title="周薪支出"><strong>{formatMoney(summary.wageExpense)}</strong></InfoPanel>
         <InfoPanel title="净变化"><strong>{formatMoney(summary.net)}</strong></InfoPanel>
       </div>
@@ -1094,10 +1140,86 @@ function renderStandingZone(league: League, index: number, totalTeams: number): 
   return <span className="muted">-</span>;
 }
 
+function renderRetirementTag(player: Player): ReactNode {
+  if (player.age >= 35) {
+    return <span className="tag danger">赛季末退役</span>;
+  }
+
+  if (player.age >= 33) {
+    return <span className="tag warning">身价下行</span>;
+  }
+
+  if (player.age >= 30) {
+    return <span className="tag muted-tag">剩 {35 - player.age} 年</span>;
+  }
+
+  return <span className="muted">-</span>;
+}
+
+function getRetirementMessage(player: Player): string {
+  if (player.age >= 35) {
+    return '本赛季结束后退役';
+  }
+
+  if (player.age >= 33) {
+    return '处于身价下行通道，建议规划接班';
+  }
+
+  return `距离退役还有 ${35 - player.age} 年，续约年限需谨慎`;
+}
+
+function getWageHealthStatus(percent: number): { label: string; className: string } {
+  if (percent >= 80) {
+    return { label: '超支风险', className: 'finance-danger' };
+  }
+
+  if (percent >= 60) {
+    return { label: '需要注意', className: 'finance-warning' };
+  }
+
+  return { label: '财务健康', className: 'finance-good' };
+}
+
 function positionWeight(position: Player['position']): number {
   return ['GK', 'DF', 'MF', 'FW'].indexOf(position);
 }
 
 function formatMoney(value: number): string {
-  return `¥${Math.round(value).toLocaleString('zh-CN')}`;
+  const amount = Math.round(value);
+
+  if (Math.abs(amount) >= 100_000_000) {
+    return `¥${(amount / 100_000_000).toFixed(1)}亿`;
+  }
+
+  if (Math.abs(amount) >= 10_000_000) {
+    return `¥${Math.round(amount / 10_000).toLocaleString('zh-CN')}万`;
+  }
+
+  if (Math.abs(amount) >= 10_000) {
+    return `¥${formatOneDecimal(amount / 10_000)}万`;
+  }
+
+  return `¥${amount.toLocaleString('zh-CN')}`;
+}
+
+function formatWeeklyWage(value: number): string {
+  const amount = Math.round(value);
+
+  if (Math.abs(amount) >= 100_000) {
+    return `¥${(amount / 10_000).toFixed(1)}万/周`;
+  }
+
+  if (Math.abs(amount) >= 10_000) {
+    return `¥${Math.round(amount / 1000)}k/周`;
+  }
+
+  return `¥${amount.toLocaleString('zh-CN')}元/周`;
+}
+
+function formatPercent(value: number): string {
+  return `${value.toFixed(1)}%`;
+}
+
+function formatOneDecimal(value: number): string {
+  return value.toFixed(1).replace(/\.0$/, '');
 }

@@ -55,7 +55,7 @@ export function selectAutoLineup(team: Team, players: Player[]): Player[] {
       overall,
       potential,
       marketValue,
-      weeklyWage: calculateWeeklyWage({ overall }),
+      weeklyWage: calculateWeeklyWage({ age, overall, potential }),
       contractYears: randomInt(1, 5),
       isListed: Math.random() < 0.25,
       isStarter: true,

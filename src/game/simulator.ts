@@ -54,7 +54,7 @@ export function simulateRound(
       players: updatedPlayers,
       growthChanges: [],
       financeLogs: [],
-      financeSummary: { ticketIncome: 0, wageExpense: 0, net: 0 },
+      financeSummary: { revenueIncome: 0, wageExpense: 0, net: 0 },
     };
   }
 
@@ -77,7 +77,7 @@ export function simulateRound(
     players: updatedPlayers,
     growthChanges: growthResult.changes,
     financeLogs: financeResult.logs,
-    financeSummary: userTeamId ? financeResult.summaryByTeam[userTeamId] ?? { ticketIncome: 0, wageExpense: 0, net: 0 } : { ticketIncome: 0, wageExpense: 0, net: 0 },
+    financeSummary: userTeamId ? financeResult.summaryByTeam[userTeamId] ?? { revenueIncome: 0, wageExpense: 0, net: 0 } : { revenueIncome: 0, wageExpense: 0, net: 0 },
   };
 }
 

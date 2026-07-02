@@ -85,7 +85,7 @@ export interface TransferMarket {
   lastRefreshSeason: string;
 }
 
-export type FinanceLogType = 'ticketIncome' | 'wageExpense' | 'transferFee';
+export type FinanceLogType = 'leagueIncome' | 'wageExpense' | 'transferFee';
 
 export interface FinanceLog {
   id: string;
@@ -98,7 +98,7 @@ export interface FinanceLog {
 }
 
 export interface FinanceSummary {
-  ticketIncome: number;
+  revenueIncome: number;
   wageExpense: number;
   net: number;
 }

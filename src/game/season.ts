@@ -65,7 +65,7 @@ export function createNextSeasonGame(game: GameState): GameState {
       matches,
       transferMarket: createTransferMarket(nextPlayers, game.userTeamId, nextSeason, 1),
       seasonHomeIncomeByLeague,
-      lastFinanceSummary: { ticketIncome: 0, wageExpense: 0, net: 0 },
+      lastFinanceSummary: { revenueIncome: 0, wageExpense: 0, net: 0 },
       lastGrowthChanges: [],
       seasonGrowthChanges: [],
       lastRetiredPlayerIds: retiredPlayerIds,

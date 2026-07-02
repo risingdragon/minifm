@@ -2,7 +2,7 @@ import type { GameState } from '../models/types';
 import { createNewGame } from './seed';
 import { createNextSeasonGame } from '../game/season';
 
-const STORAGE_KEY = 'minifm-save-v4';
+const STORAGE_KEY = 'minifm-save-v6';
 const SEASON_KEY = 'minifm-season';
 
 export function loadGame(): GameState {

@@ -112,10 +112,13 @@ export function createNewGame(): GameState {
   const userTeam = lowestTeams[Math.floor(Math.random() * lowestTeams.length)];
   const teamsWithUser = teams.map((team) => ({ ...team, isUserControlled: team.id === userTeam.id }));
   const players = createInitialPlayers(teamsWithUser);
-  const teamsWithPlayers = teamsWithUser.map((team) => ({
-    ...team,
-    players: players.filter((player) => player.teamId === team.id).map((player) => player.id),
-  }));
+  const teamsWithPlayers = applyInitialBalances(
+    teamsWithUser.map((team) => ({
+      ...team,
+      players: players.filter((player) => player.teamId === team.id).map((player) => player.id),
+    })),
+    players,
+  );
   const { leaguesWithSchedule, matches } = createSchedules(leagues, teamsWithPlayers);
   const playersWithLineups = selectLineupForAllTeams(teamsWithPlayers, players);
   const transferMarket = createTransferMarket(playersWithLineups, userTeam.id, '1', 1);
@@ -138,7 +141,7 @@ export function createNewGame(): GameState {
     transferMarket,
     financeLogs: [],
     seasonHomeIncomeByLeague,
-    lastFinanceSummary: { ticketIncome: 0, wageExpense: 0, net: 0 },
+    lastFinanceSummary: { revenueIncome: 0, wageExpense: 0, net: 0 },
     lastGrowthChanges: [],
     seasonGrowthChanges: [],
     lastRetiredPlayerIds: [],
@@ -180,7 +183,7 @@ function createTeams(leagues: League[]): Team[] {
       shortName,
       leagueId: league.id,
       players: [],
-      balance: league.level === 1 ? 5000000 + teamIndex * 120000 : 1800000 + teamIndex * 70000,
+      balance: 0,
       stadiumCapacity: league.level === 1 ? 22000 + teamIndex * 450 : 12000 + teamIndex * 320,
       ticketPrice: league.level === 1 ? 38 : 24,
       fanBase: Math.min(100, league.level === 1 ? 58 + teamIndex : 34 + teamIndex),
@@ -188,6 +191,19 @@ function createTeams(leagues: League[]): Team[] {
       primaryColor,
     })),
   );
+}
+
+function applyInitialBalances(teams: Team[], players: Player[]): Team[] {
+  return teams.map((team) => {
+    const highestMarketValue = players
+      .filter((player) => player.teamId === team.id)
+      .reduce((highest, player) => Math.max(highest, player.marketValue), 0);
+
+    return {
+      ...team,
+      balance: highestMarketValue * 3,
+    };
+  });
 }
 
 function createInitialPlayers(teams: Team[]): Player[] {
@@ -241,7 +257,7 @@ function createPlayerCandidate(position: Position, minOverall: number, maxOveral
     overall,
     potential,
     marketValue,
-    weeklyWage: calculateWeeklyWage({ overall }),
+    weeklyWage: calculateWeeklyWage({ age, overall, potential }),
     contractYears: createContractYears(age),
     isListed: Math.random() < 0.25,
   };
@@ -263,7 +279,7 @@ export function createYouthPlayer(teamId: string, position: Position, index: num
     overall,
     potential,
     marketValue,
-    weeklyWage: calculateWeeklyWage({ overall }),
+    weeklyWage: calculateWeeklyWage({ age, overall, potential }),
     contractYears: Math.min(randomInt(2, 5), getMaxContractYears(age)),
     isListed: false,
     isStarter: false,
